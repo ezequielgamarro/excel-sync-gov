@@ -76,9 +76,7 @@ describe("validación defensiva (T51, §7.8 / RF-02.i / RF-03.h)", () => {
 
   it("mantiene la categoría ausente con 0 intervenciones (RF-03.e)", () => {
     const snap = mutable();
-    snap.payload.regional = snap.payload.regional.filter(
-      (item) => item.unidad_id !== "norte",
-    );
+    snap.payload.regional = snap.payload.regional.filter((item) => item.unidad_id !== "norte");
     const result = validateSnapshotMessage(snap);
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -92,9 +90,33 @@ describe("validación defensiva (T51, §7.8 / RF-02.i / RF-03.h)", () => {
 describe("orden del ranking (RF-04.e)", () => {
   it("ordena desc por intervenciones y desempata alfabéticamente", () => {
     const items: RankingItem[] = [
-      { puesto: 0, dependencia_id: "a", comisaria: "Comisaría 3", intervenciones: 50, variacion_abs: 0, variacion_pct: 0, puesto_previo: 0 },
-      { puesto: 0, dependencia_id: "b", comisaria: "Comisaría 1", intervenciones: 50, variacion_abs: 0, variacion_pct: 0, puesto_previo: 0 },
-      { puesto: 0, dependencia_id: "c", comisaria: "Comisaría 9", intervenciones: 90, variacion_abs: 0, variacion_pct: 0, puesto_previo: 0 },
+      {
+        puesto: 0,
+        dependencia_id: "a",
+        comisaria: "Comisaría 3",
+        intervenciones: 50,
+        variacion_abs: 0,
+        variacion_pct: 0,
+        puesto_previo: 0,
+      },
+      {
+        puesto: 0,
+        dependencia_id: "b",
+        comisaria: "Comisaría 1",
+        intervenciones: 50,
+        variacion_abs: 0,
+        variacion_pct: 0,
+        puesto_previo: 0,
+      },
+      {
+        puesto: 0,
+        dependencia_id: "c",
+        comisaria: "Comisaría 9",
+        intervenciones: 90,
+        variacion_abs: 0,
+        variacion_pct: 0,
+        puesto_previo: 0,
+      },
     ];
     const ranked = normalizeRanking(items);
     expect(ranked.map((item) => item.comisaria)).toEqual([
@@ -120,7 +142,9 @@ describe("orden del ranking (RF-04.e)", () => {
 
   it("acepta un KPI sin referencia (has_reference=false)", () => {
     const snap = structuredClone(makeSnapshot()) as unknown as {
-      payload: { kpis: Record<string, Kpi & { has_reference: boolean; delta_abs: null; delta_pct: null }> };
+      payload: {
+        kpis: Record<string, Kpi & { has_reference: boolean; delta_abs: null; delta_pct: null }>;
+      };
     };
     snap.payload.kpis.armas_secuestradas.has_reference = false;
     snap.payload.kpis.armas_secuestradas.delta_abs = null;

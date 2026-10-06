@@ -29,7 +29,6 @@ import ssl
 import sys
 import types
 from pathlib import Path
-from typing import Any
 
 _BACKEND = Path(__file__).resolve().parents[1]
 _REPO = _BACKEND.parent
@@ -55,17 +54,19 @@ def _load_tls() -> types.ModuleType:
             ("app.core", _BACKEND / "app" / "core"),
         ):
             pkg = types.ModuleType(name)
-            pkg.__path__ = [str(path)]  # type: ignore[attr-defined]
+            pkg.__path__ = [str(path)]
             sys.modules.setdefault(name, pkg)
         config_mod = types.ModuleType("app.config")
         config_mod.Settings = _StubSettings  # type: ignore[attr-defined]
         config_mod.get_settings = lambda: _StubSettings()  # type: ignore[attr-defined]
         sys.modules["app.config"] = config_mod
-        spec = importlib.util.spec_from_file_location("app.core.tls", _BACKEND / "app" / "core" / "tls.py")
+        spec = importlib.util.spec_from_file_location(
+            "app.core.tls", _BACKEND / "app" / "core" / "tls.py"
+        )
         assert spec is not None and spec.loader is not None
         module = importlib.util.module_from_spec(spec)
         sys.modules["app.core.tls"] = module
-        getattr(spec.loader, "exec_module")(module)
+        spec.loader.exec_module(module)
         return module
 
 

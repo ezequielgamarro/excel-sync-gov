@@ -70,7 +70,7 @@ def _install_stubs() -> None:
         ("app.services", _BACKEND / "app" / "services"),
     ):
         pkg = types.ModuleType(name)
-        pkg.__path__ = [str(path)]  # type: ignore[attr-defined]
+        pkg.__path__ = [str(path)]
         sys.modules.setdefault(name, pkg)
 
     config_mod = types.ModuleType("app.config")
@@ -102,7 +102,7 @@ def _load() -> types.ModuleType:
         assert spec is not None and spec.loader is not None
         module = importlib.util.module_from_spec(spec)
         sys.modules["app.services.webhook_signature"] = module
-        getattr(spec.loader, "exec_module")(module)
+        spec.loader.exec_module(module)
         return module
 
 
@@ -128,7 +128,9 @@ def apps_script_canonical(body: bytes, *, key_id: str = _KEY_ID, nonce: str = _N
 
 def apps_script_signature(body: bytes, secret: bytes = _SECRET) -> str:
     """``computeSignatureHeader_``: ``sha256=`` + HMAC-SHA256 hex."""
-    digest = hmac.new(secret, apps_script_canonical(body).encode("utf-8"), hashlib.sha256).hexdigest()
+    digest = hmac.new(
+        secret, apps_script_canonical(body).encode("utf-8"), hashlib.sha256
+    ).hexdigest()
     return f"sha256={digest}"
 
 
@@ -154,9 +156,7 @@ class _FakeSecretManager:
 
 
 def _metadata() -> Any:
-    return ws.WebhookSecretMetadata(
-        key_id=_KEY_ID, webhook_id=_WEBHOOK_ID, estado="vigente"
-    )
+    return ws.WebhookSecretMetadata(key_id=_KEY_ID, webhook_id=_WEBHOOK_ID, estado="vigente")
 
 
 def _verify(body: bytes, headers: dict[str, str]) -> Any:

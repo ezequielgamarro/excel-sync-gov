@@ -162,7 +162,7 @@ class CorrelationIdFilter(logging.Filter):
     """Inyecta ``correlation_id`` en cada ``LogRecord`` desde el contexto."""
 
     def filter(self, record: logging.LogRecord) -> bool:
-        setattr(record, "correlation_id", get_correlation_id())
+        record.correlation_id = get_correlation_id()
         return True
 
 

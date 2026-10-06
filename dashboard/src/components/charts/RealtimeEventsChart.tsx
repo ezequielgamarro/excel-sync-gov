@@ -103,7 +103,10 @@ export function RealtimeEventsChart({
           SIN DATOS
         </p>
       ) : (
-        <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden" data-testid="chart-realtime">
+        <div
+          className="relative min-h-0 min-w-0 flex-1 overflow-hidden"
+          data-testid="chart-realtime"
+        >
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
               <CartesianGrid stroke="var(--border)" strokeDasharray="2 6" vertical={false} />

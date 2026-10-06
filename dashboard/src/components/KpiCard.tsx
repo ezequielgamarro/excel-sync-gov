@@ -99,7 +99,10 @@ export function KpiCard({
         {variation ? <TrendChip variation={variation} pct={pct} /> : null}
       </header>
 
-      <span className="kpi-value text-[40px] font-semibold leading-[1.02] text-ink" aria-hidden="true">
+      <span
+        className="kpi-value text-[40px] font-semibold leading-[1.02] text-ink"
+        aria-hidden="true"
+      >
         {formatInteger(displayValue)}
       </span>
 
@@ -111,8 +114,7 @@ export function KpiCard({
               <span className="num text-ink2">{formatInteger(kpi.baseline_value)}</span>
             </span>
             <span className="text-muted">
-              <span className="num text-ink2">{variation.abs}</span>{" "}
-              <span>vs {periodLabel}</span>
+              <span className="num text-ink2">{variation.abs}</span> <span>vs {periodLabel}</span>
             </span>
           </>
         ) : (

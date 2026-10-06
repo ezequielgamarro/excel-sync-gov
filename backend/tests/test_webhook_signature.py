@@ -50,7 +50,7 @@ def _load_with_stubs() -> types.ModuleType:
         ("app.services", _BACKEND / "app" / "services"),
     ):
         pkg = types.ModuleType(name)
-        pkg.__path__ = [str(path)]  # type: ignore[attr-defined]
+        pkg.__path__ = [str(path)]
         sys.modules.setdefault(name, pkg)
 
     class _StubSettings:
@@ -90,7 +90,7 @@ def _load_with_stubs() -> types.ModuleType:
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules["app.services.webhook_signature"] = module
-    getattr(spec.loader, "exec_module")(module)
+    spec.loader.exec_module(module)
     return module
 
 
@@ -98,7 +98,6 @@ def _load_module() -> types.ModuleType:
     try:
         import pydantic_settings  # noqa: F401
         import starlette  # noqa: F401
-
         from app.services import webhook_signature
 
         return webhook_signature

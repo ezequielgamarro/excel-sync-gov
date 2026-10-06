@@ -75,9 +75,7 @@ export function RankingTop5Table({
   error = null,
   title = "Ranking Top 5",
 }: RankingTop5TableProps): JSX.Element {
-  const rows = (data ?? [])
-    .filter((item) => item.name.trim() !== "")
-    .slice(0, MAX_ROWS);
+  const rows = (data ?? []).filter((item) => item.name.trim() !== "").slice(0, MAX_ROWS);
 
   return (
     <section className="panel flex h-full min-h-0 flex-col">
@@ -97,8 +95,8 @@ export function RankingTop5Table({
         ) : (
           <table className="w-full min-w-[520px] border-collapse text-sm">
             <caption className="sr-only">
-              Ranking de dependencias Top 5 por intervenciones (Posición, Comisaría,
-              Intervenciones, Variación)
+              Ranking de dependencias Top 5 por intervenciones (Posición, Comisaría, Intervenciones,
+              Variación)
             </caption>
             <thead>
               <tr className="border-b border-border-strong text-left text-[11px] uppercase tracking-[0.08em] text-muted">
@@ -108,10 +106,14 @@ export function RankingTop5Table({
                 <th scope="col" className="pb-2">
                   Comisaría
                 </th>
-                <th scope="col" style={{ width: 130 }} className="pb-2 pr-8 text-right">
+                <th scope="col" style={{ width: 130 }} className="pb-2 pr-12 text-right">
                   Intervenciones
                 </th>
-                <th scope="col" style={{ width: 130 }} className="pb-2 pr-4 text-right">
+                <th
+                  scope="col"
+                  style={{ width: 150 }}
+                  className="whitespace-nowrap pb-2 pr-4 text-right"
+                >
                   Variación
                 </th>
               </tr>
@@ -154,11 +156,9 @@ export function RankingTop5Table({
                       <td className="pr-4 text-ink" title={item.name}>
                         {item.name}
                       </td>
-                      <td className="num pr-8 text-right text-ink">
-                        {formatInteger(item.value)}
-                      </td>
+                      <td className="num pr-12 text-right text-ink">{formatInteger(item.value)}</td>
                       <td
-                        className="num pr-4 text-right"
+                        className="num whitespace-nowrap pr-4 text-right"
                         style={variacionStyle(variacion.tone)}
                         title={variacion.text}
                         aria-label={`Variación: ${variacion.text}`}

@@ -63,9 +63,9 @@ SIGNATURE_HEADER: Final = "X-Webhook-Signature"
 # --- Formato de la firma (§9.2) ----------------------------------------------
 SIGNATURE_ALGORITHM: Final = "sha256"
 SIGNATURE_PREFIX: Final = f"{SIGNATURE_ALGORITHM}="
-SIGNATURE_HEX_LEN: Final = 64           # SHA-256 = 32 bytes = 64 hex
-NONCE_HEX_LEN: Final = 32               # 128 bits
-SECRET_MIN_BYTES: Final = 32            # secreto de 256 bits (§9.2)
+SIGNATURE_HEX_LEN: Final = 64  # SHA-256 = 32 bytes = 64 hex
+NONCE_HEX_LEN: Final = 32  # 128 bits
+SECRET_MIN_BYTES: Final = 32  # secreto de 256 bits (§9.2)
 MAX_FIELD_LEN: Final = 128
 
 _NONCE_RE: Final = re.compile(r"^[0-9a-fA-F]{32}$")
@@ -174,9 +174,7 @@ def decode_secret_material(material: str, *, name: str = "secreto de webhook") -
     for raw in candidates:
         if len(raw) >= SECRET_MIN_BYTES:
             return raw
-    raise SecretMaterialError(
-        f"Material de {name} inválido: se esperan ≥ 256 bits (hex o base64)."
-    )
+    raise SecretMaterialError(f"Material de {name} inválido: se esperan ≥ 256 bits (hex o base64).")
 
 
 class EnvironmentSecretManager:
@@ -438,9 +436,7 @@ def verify_webhook_signature(
     """
     parsed = parse_signed_headers(headers)
 
-    metadata = find_active_secret_metadata(
-        metadata_candidates, key_id=parsed.key_id, now=now
-    )
+    metadata = find_active_secret_metadata(metadata_candidates, key_id=parsed.key_id, now=now)
 
     # Binding: la cabecera y la metadata deben referirse al mismo origen
     # (comparación constante, AM-04).

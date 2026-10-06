@@ -35,6 +35,7 @@ de ``0002_ingest_event``.
 
 Idempotente: up con ``IF NOT EXISTS``; down con ``IF EXISTS`` + ``CASCADE``.
 """
+
 from typing import Sequence, Union
 
 from alembic import op
@@ -95,10 +96,8 @@ _COMMENTS = (
     "COMMENT ON TABLE app.agg_daily IS "
     "'Agregado por día/unidad/turno/KPI (T10, spec §7.9). Alimenta baseline "
     "«vs ayer». Retención 60 meses, particionado mensual.'",
-    "COMMENT ON COLUMN app.agg_hourly.bucket IS "
-    "'Inicio de la hora del agregado (UTC).'",
-    "COMMENT ON COLUMN app.agg_daily.bucket IS "
-    "'Día de datos del agregado (data_date).'",
+    "COMMENT ON COLUMN app.agg_hourly.bucket IS 'Inicio de la hora del agregado (UTC).'",
+    "COMMENT ON COLUMN app.agg_daily.bucket IS 'Día de datos del agregado (data_date).'",
     "COMMENT ON COLUMN app.agg_hourly.kpi_id IS "
     "'Clave canónica del KPI (p. ej. total_consultas_sifcop) o "
     "''intervenciones'' para series regional/turnos.'",

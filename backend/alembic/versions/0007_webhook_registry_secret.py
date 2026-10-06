@@ -37,6 +37,7 @@ del Apps Script; la BD guarda **solo metadata** (spec §9.2, RNF-02.e).
 
 Idempotente: up con ``IF NOT EXISTS``; down con ``IF EXISTS``.
 """
+
 from typing import Sequence, Union
 
 from alembic import op

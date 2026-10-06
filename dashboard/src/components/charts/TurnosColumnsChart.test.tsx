@@ -29,7 +29,11 @@ describe("TurnosColumnsChart — datos reales y estados", () => {
     expect(screen.getByRole("status", { name: /Cargando/ })).toBeInTheDocument();
 
     rerender(
-      <TurnosColumnsChart title="Intervenciones" testId="chart-columns-unidad" error="sin sesión" />,
+      <TurnosColumnsChart
+        title="Intervenciones"
+        testId="chart-columns-unidad"
+        error="sin sesión"
+      />,
     );
     expect(screen.getByRole("alert")).toHaveTextContent("sin sesión");
   });

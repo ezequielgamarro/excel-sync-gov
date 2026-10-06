@@ -121,9 +121,7 @@ async def build_room_health(
 
     last_update = _as_utc(snapshot.updated_at) if snapshot is not None else None
     data_age = (
-        max(0, int((momento - last_update).total_seconds()))
-        if last_update is not None
-        else None
+        max(0, int((momento - last_update).total_seconds())) if last_update is not None else None
     )
 
     wid = webhook_id or await _latest_webhook_id(session)

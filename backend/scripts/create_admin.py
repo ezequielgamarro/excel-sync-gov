@@ -68,8 +68,7 @@ async def _run(username: str, password: str, role: str) -> int:
                 session, username=username, password=password, roles=_roles_for(role)
             )
             print(
-                f"Usuario '{user['username']}' creado con roles {user['roles']} "
-                f"(id={user['id']})."
+                f"Usuario '{user['username']}' creado con roles {user['roles']} (id={user['id']})."
             )
             return 0
         user_id = getattr(existing, "_mapping", existing)["user_id"]

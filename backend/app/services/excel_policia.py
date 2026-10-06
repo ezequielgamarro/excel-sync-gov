@@ -222,7 +222,7 @@ def _series_from_counts(
     counter: Mapping[str, int], order: Iterable[str] | None = None
 ) -> list[dict[str, Any]]:
     """Convierte un contador en ``[{"name", "value"}]`` con orden determinista."""
-    items = [
+    items: list[dict[str, Any]] = [
         {"name": name, "value": int(value)}
         for name, value in counter.items()
         if name and not _is_empty(name)

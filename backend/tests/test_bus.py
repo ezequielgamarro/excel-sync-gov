@@ -42,7 +42,7 @@ def _install_stubs() -> None:
         ("app.services", _BACKEND / "app" / "services"),
     ):
         pkg = types.ModuleType(name)
-        pkg.__path__ = [str(path)]  # type: ignore[attr-defined]
+        pkg.__path__ = [str(path)]
         sys.modules.setdefault(name, pkg)
 
     logging_mod = types.ModuleType("app.core.logging")
@@ -96,7 +96,7 @@ def _load_module(name: str, path: Path) -> types.ModuleType:
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules[name] = module
-    getattr(spec.loader, "exec_module")(module)
+    spec.loader.exec_module(module)
     return module
 
 
@@ -104,7 +104,6 @@ def _load_bus() -> types.ModuleType:
     try:
         import redis  # noqa: F401
         import sqlalchemy  # noqa: F401
-
         from app.services import bus
 
         return bus
@@ -224,7 +223,7 @@ def test_degraded_without_redis_returns_none() -> None:
         redis_url = ""
 
     room = bus.RoomBus(_NoRedisSettings())
-    assert room._redis_healthy is False  # type: ignore[attr-defined]
+    assert room._redis_healthy is False
 
     assert _run(room.next_seq("sala-central")) is None
     assert _run(room.get_last_seq("sala-central")) is None

@@ -71,9 +71,7 @@ async def _access_tokens(session: AsyncSession, sub: str) -> dict[str, object]:
     user_id = user._mapping["user_id"]
     roles = await roles_for_user(session, user_id)
     capabilities = await resolve_capabilities(roles, session)
-    access = get_jwt_service().issue_access_token(
-        sub=sub, roles=roles, capabilities=capabilities
-    )
+    access = get_jwt_service().issue_access_token(sub=sub, roles=roles, capabilities=capabilities)
     settings = get_settings()
     csrf_secret = settings.csrf_secret or settings.jwt_signing_key
     return {
@@ -161,9 +159,7 @@ async def refresh(
         # Reutilización de un refresh ya rotado: la cadena queda revocada.
         await record_audit(
             actor="anonymous",
-            action="auth.refresh.reuse"
-            if exc.reuse_detected
-            else "auth.refresh.rejected",
+            action="auth.refresh.reuse" if exc.reuse_detected else "auth.refresh.rejected",
             resource="auth",
             result="denied",
             ip=request.client.host if request.client else "",

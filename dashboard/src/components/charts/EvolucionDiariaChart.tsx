@@ -8,15 +8,7 @@
  * muestra «SIN DATOS».
  */
 
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { IncidenteFecha } from "../../types";
 import { formatInteger } from "../../lib/format";
 import { usePrefersReducedMotion } from "../../hooks/useAnimatedNumber";

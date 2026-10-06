@@ -57,6 +57,7 @@ clave (§7.9, RNF-02.e).
 Idempotente: rol con guarda de existencia; funciones ``OR REPLACE``; REVOKE es
 no-op si el privilegio no existe.
 """
+
 from typing import Sequence, Union
 
 from alembic import op

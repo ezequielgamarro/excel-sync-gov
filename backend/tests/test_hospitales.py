@@ -20,11 +20,10 @@ if str(_BACKEND) not in sys.path:
     sys.path.insert(0, str(_BACKEND))
 
 import pandas as pd  # noqa: E402
-from fastapi import FastAPI  # noqa: E402
-from fastapi.testclient import TestClient  # noqa: E402
-
 from app.api import hospitales  # noqa: E402
 from app.core.errors import register_exception_handlers  # noqa: E402
+from fastapi import FastAPI  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
 
 HEADERS = [
     "Localidad",
@@ -63,18 +62,9 @@ def _client() -> TestClient:
 
 def test_to_export_url() -> None:
     base = "https://docs.google.com/spreadsheets/d/ABC123"
-    assert (
-        hospitales.to_export_url(f"{base}/edit?usp=sharing")
-        == f"{base}/export?format=xlsx"
-    )
-    assert (
-        hospitales.to_export_url(f"{base}/edit#gid=123")
-        == f"{base}/export?format=xlsx&gid=123"
-    )
-    assert (
-        hospitales.to_export_url(f"{base}/export?format=xlsx")
-        == f"{base}/export?format=xlsx"
-    )
+    assert hospitales.to_export_url(f"{base}/edit?usp=sharing") == f"{base}/export?format=xlsx"
+    assert hospitales.to_export_url(f"{base}/edit#gid=123") == f"{base}/export?format=xlsx&gid=123"
+    assert hospitales.to_export_url(f"{base}/export?format=xlsx") == f"{base}/export?format=xlsx"
     for invalid in ("", "https://example.com/foo"):
         try:
             hospitales.to_export_url(invalid)
@@ -87,7 +77,7 @@ def _run_ok_case() -> None:
     previous_url = hospitales.SHEET_URL
     previous_download = hospitales._download_sheet
     hospitales.SHEET_URL = "https://docs.google.com/spreadsheets/d/ABC123/edit?usp=sharing"
-    hospitales._download_sheet = lambda _url: _xlsx_bytes()
+    hospitales._download_sheet = lambda export_url: _xlsx_bytes()
     try:
         response = _client().get("/api/hospitales/estadisticas")
     finally:

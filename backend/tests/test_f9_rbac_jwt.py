@@ -85,7 +85,7 @@ def _install_stubs() -> None:
         ("app.services", _BACKEND / "app" / "services"),
     ):
         pkg = types.ModuleType(name)
-        pkg.__path__ = [str(path)]  # type: ignore[attr-defined]
+        pkg.__path__ = [str(path)]
         sys.modules.setdefault(name, pkg)
 
     class _Settings:
@@ -151,7 +151,7 @@ def _load(name: str, path: Path) -> types.ModuleType:
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules[name] = module
-    getattr(spec.loader, "exec_module")(module)
+    spec.loader.exec_module(module)
     return module
 
 
@@ -162,7 +162,9 @@ def _load_modules() -> tuple[types.ModuleType, types.ModuleType]:
         return capacity, jwt_native
     except ImportError:
         _install_stubs()
-        jwt_native = _load("app.services.jwt_native", _BACKEND / "app" / "services" / "jwt_native.py")
+        jwt_native = _load(
+            "app.services.jwt_native", _BACKEND / "app" / "services" / "jwt_native.py"
+        )
         capacity = _load("app.services.capacity", _BACKEND / "app" / "services" / "capacity.py")
         return capacity, jwt_native
 
@@ -195,7 +197,10 @@ def _sign(capabilities: list[str], roles: list[str] | None = None) -> str:
             clock_skew_seconds=0,
         )
     )
-    return service.issue_access_token(sub="operador-1", roles=roles or ["viewer"], capabilities=capabilities)
+    token: str = service.issue_access_token(
+        sub="operador-1", roles=roles or ["viewer"], capabilities=capabilities
+    )
+    return token
 
 
 def _resolve(token: str, *, role_rows: list[tuple[str, ...]] | None = None) -> Any:
@@ -249,7 +254,11 @@ def test_unknown_capabilities_are_filtered_out() -> None:
 def test_tampered_token_is_rejected_401() -> None:
     token = _sign(["dash.view.live"])
     tampered = token[:-2] + ("aa" if token[-2:] != "aa" else "bb")
-    exc = _expect_reject(capacity.resolve_operator_identity({"Authorization": f"Bearer {tampered}"}, _FakeSession([])))
+    exc = _expect_reject(
+        capacity.resolve_operator_identity(
+            {"Authorization": f"Bearer {tampered}"}, _FakeSession([])
+        )
+    )
     assert getattr(exc, "status_code", 0) == 401
 
 

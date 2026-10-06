@@ -89,7 +89,9 @@ class _FakeResult:
 
 
 class _FakeSession:
-    def __init__(self, *, registry: list[Any] | None = None, secrets: list[Any] | None = None) -> None:
+    def __init__(
+        self, *, registry: list[Any] | None = None, secrets: list[Any] | None = None
+    ) -> None:
         self._registry = registry or []
         self._secrets = secrets or []
 
@@ -114,7 +116,7 @@ def _install_stubs() -> None:
         ("app.services", _BACKEND / "app" / "services"),
     ):
         pkg = types.ModuleType(name)
-        pkg.__path__ = [str(path)]  # type: ignore[attr-defined]
+        pkg.__path__ = [str(path)]
         sys.modules.setdefault(name, pkg)
 
     class _StubSettings:
@@ -225,7 +227,7 @@ def _load_module(name: str, filename: str) -> types.ModuleType:
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules[name] = module
-    getattr(spec.loader, "exec_module")(module)
+    spec.loader.exec_module(module)
     return module
 
 
@@ -233,7 +235,6 @@ def _load_modules() -> tuple[types.ModuleType, types.ModuleType]:
     try:
         import fastapi  # noqa: F401
         import sqlalchemy  # noqa: F401
-
         from app.services import auth, webhook_signature
 
         return auth, webhook_signature
@@ -410,9 +411,7 @@ def test_invalid_signature_rejected_unauthorized() -> None:
 def test_timestamp_outside_window_rejected_anti_replay() -> None:
     body = b"{}"
     stale = "2026-10-03T13:00:00Z"  # ~82 min atrás (> ±300 s)
-    exc = _expect_reject(
-        lambda: _authenticate(body, _headers(body, timestamp=stale), now=_NOW)
-    )
+    exc = _expect_reject(lambda: _authenticate(body, _headers(body, timestamp=stale), now=_NOW))
     assert getattr(exc, "code", "") == "ANTI_REPLAY"
     assert getattr(exc, "status_code", 0) == 409
 

@@ -127,12 +127,8 @@ describe("DashboardScreen · fuente primaria estadísticas", () => {
     expect(screen.getByTestId("chart-logistica-armas")).toBeInTheDocument();
     expect(screen.queryByTestId("chart-donut")).toBeNull();
     expect(screen.queryByText("Incidentes por Turno Operativo")).toBeNull();
-    expect(
-      screen.getByText("Vehículos secuestrados").parentElement?.textContent,
-    ).toContain("4");
-    expect(
-      screen.getByText("Armas secuestradas").parentElement?.textContent,
-    ).toContain("2");
+    expect(screen.getByText("Vehículos secuestrados").parentElement?.textContent).toContain("4");
+    expect(screen.getByText("Armas secuestradas").parentElement?.textContent).toContain("2");
   });
 
   it("Estadísticas: panel maestro renderiza TODOS los gráficos del sistema", () => {
@@ -192,7 +188,9 @@ describe("DashboardScreen · fuente primaria estadísticas", () => {
     renderScreen("#/estadisticas");
 
     expect(mocks.ultimoRango).toBe("ayer");
-    const panel = screen.getByRole("radiogroup", { name: "Período del panel de estadísticas" });
+    // El panel de Estadísticas ya no tiene su propio "Comparar vs"; se usa el
+    // control GLOBAL de la cabecera (aria-label por defecto «Comparar versus»).
+    const panel = screen.getByRole("radiogroup", { name: "Comparar versus" });
     fireEvent.click(within(panel).getByRole("radio", { name: "Mes anterior" }));
     expect(mocks.ultimoRango).toBe("mes");
     expect(within(panel).getByRole("radio", { name: "Mes anterior" })).toHaveAttribute(

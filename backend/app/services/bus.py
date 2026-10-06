@@ -161,9 +161,7 @@ class RoomBus:
 
     async def _client(self) -> aioredis.Redis:
         if self._redis is None:
-            self._redis = aioredis.from_url(
-                self._settings.redis_url, decode_responses=True
-            )
+            self._redis = aioredis.from_url(self._settings.redis_url, decode_responses=True)
         return self._redis
 
     def _mark_unhealthy(self) -> None:
@@ -228,9 +226,7 @@ class RoomBus:
             return False
         try:
             client = await self._client()
-            await client.publish(
-                self.channel(room_id), json.dumps(message, separators=(",", ":"))
-            )
+            await client.publish(self.channel(room_id), json.dumps(message, separators=(",", ":")))
             return True
         except Exception:
             logger.warning(
@@ -258,9 +254,7 @@ class RoomBus:
                 continue
             pubsub_client: aioredis.Redis | None = None
             try:
-                pubsub_client = aioredis.from_url(
-                    self._settings.redis_url, decode_responses=True
-                )
+                pubsub_client = aioredis.from_url(self._settings.redis_url, decode_responses=True)
                 await pubsub_client.ping()
                 pubsub = pubsub_client.pubsub()
                 await pubsub.subscribe(*channels)

@@ -267,9 +267,7 @@ async def update_user(
         session, _mapping(row)["user_id"], enabled=body.enabled, roles=body.roles
     )
     if body.enabled is False:
-        await get_reauth_registry().mark_revoked(
-            _mapping(row)["sub"], reason="user_disabled"
-        )
+        await get_reauth_registry().mark_revoked(_mapping(row)["sub"], reason="user_disabled")
     await record_audit(
         actor=operator.sub,
         action="user.disabled" if body.enabled is False else "user.updated",
@@ -380,9 +378,7 @@ async def reset_password(
     if row is None:
         raise_http_error("NOT_FOUND", "Usuario no encontrado.")
     await user_store.reset_password(session, _mapping(row)["user_id"], body.new_password)
-    await get_reauth_registry().mark_revoked(
-        _mapping(row)["sub"], reason="password_reset"
-    )
+    await get_reauth_registry().mark_revoked(_mapping(row)["sub"], reason="password_reset")
     await record_audit(
         actor=operator.sub,
         action="user.password.reset",
@@ -434,9 +430,7 @@ async def update_role_capabilities(
     operator: OperatorIdentity = Depends(get_operator),
     session: AsyncSession = Depends(session_dependency),
 ) -> JSONResponse:
-    await _admin_guard(
-        request, operator, action="role.capabilities.update", resource=role_name
-    )
+    await _admin_guard(request, operator, action="role.capabilities.update", resource=role_name)
     if role_name not in _KNOWN_ROLES:
         raise_http_error("BAD_REQUEST", "Rol desconocido.")
     invalid = [cap for cap in body.capabilities if cap not in ALL_CAPABILITIES]

@@ -73,7 +73,9 @@ def main() -> int:
             "retirar las que quedan fuera de la ventana de 2 minors"
         )
 
-    patches = [patch for major, minor, patch in versions if major == latest_major and minor == minors[-1]]
+    patches = [
+        patch for major, minor, patch in versions if major == latest_major and minor == minors[-1]
+    ]
     if not patches:
         errors.append(f"no hay schema de la minor vigente {latest_major}.{minors[-1]}")
 

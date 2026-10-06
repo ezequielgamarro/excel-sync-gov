@@ -105,9 +105,7 @@ class RedisRevocationBackend:
 
     async def note_capabilities(self, sub: str, capabilities: list[str], ttl: int) -> None:
         client = await self._client()
-        await client.set(
-            f"caps:sub:{sub}", json.dumps(sorted(capabilities)), ex=ttl
-        )
+        await client.set(f"caps:sub:{sub}", json.dumps(sorted(capabilities)), ex=ttl)
 
     async def get_capabilities(self, sub: str) -> list[str] | None:
         client = await self._client()

@@ -8,6 +8,7 @@ Ejecutable en local y en CI (job `contracts-validate`):
 
     python scripts/validate_contract_messages.py
 """
+
 from __future__ import annotations
 
 import json

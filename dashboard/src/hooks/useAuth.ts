@@ -89,8 +89,7 @@ export function useAuth(): AuthState {
     // Si el token no trae el claim `capabilities`, no se decide en cliente: se
     // deja que el backend aplique RBAC (P6) y responda 403.
     canViewLive:
-      Boolean(session) &&
-      (session!.capabilities.length === 0 || hasCapability("dash.view.live")),
+      Boolean(session) && (session!.capabilities.length === 0 || hasCapability("dash.view.live")),
     login,
     logout,
   };

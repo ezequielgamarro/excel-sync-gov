@@ -171,7 +171,7 @@ async def _resolve_kpi_baseline(
     if hourly is not None:
         return int(hourly)
 
-    daily = (
+    daily: Any = (
         await session.execute(
             select(agg_daily.c.value)
             .where(
@@ -193,7 +193,7 @@ async def _resolve_turno_baseline(
 ) -> int | None:
     """Resuelve el baseline ``ayer_mismo_turno`` de un turno operativo."""
     yesterday = data_date - timedelta(days=1)
-    value = (
+    value: Any = (
         await session.execute(
             select(agg_daily.c.value)
             .where(

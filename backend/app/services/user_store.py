@@ -28,9 +28,7 @@ from app.services.passwords import (
     validate_password_policy,
 )
 
-_KNOWN_ROLES: frozenset[str] = frozenset(
-    {"viewer", "supervisor", "auditor", "platform-admin"}
-)
+_KNOWN_ROLES: frozenset[str] = frozenset({"viewer", "supervisor", "auditor", "platform-admin"})
 
 
 def known_roles() -> frozenset[str]:
@@ -215,9 +213,11 @@ async def record_login_success(session: AsyncSession, user_id: uuid.UUID) -> Non
 def lockout_seconds_for(failed_attempts: int) -> int:
     """Backoff progresivo acotado por ``login_lockout_seconds``."""
     settings = get_settings()
-    base = max(1, settings.login_lockout_base_seconds)
+    base: int = max(1, settings.login_lockout_base_seconds)
+    limit: int = settings.login_lockout_seconds
     exponent = max(0, failed_attempts - 1)
-    return min(settings.login_lockout_seconds, base * (2 ** exponent))
+    result: int = min(limit, base * (2**exponent))
+    return result
 
 
 async def record_login_failure(

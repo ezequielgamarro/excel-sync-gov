@@ -67,7 +67,7 @@ class _Operator:
     def __init__(self, sub: str, caps: set[str]) -> None:
         self.sub = sub
         self.capabilities = frozenset(caps)
-        self.roles = frozenset()
+        self.roles: frozenset[str] = frozenset()
 
     def has_capacity(self, capability: str) -> bool:
         return capability in self.capabilities
@@ -80,7 +80,7 @@ def _install_stubs() -> None:
         ("app.services", _BACKEND / "app" / "services"),
     ):
         pkg = types.ModuleType(name)
-        pkg.__path__ = [str(path)]  # type: ignore[attr-defined]
+        pkg.__path__ = [str(path)]
         sys.modules.setdefault(name, pkg)
 
     starlette = types.ModuleType("starlette")
@@ -145,7 +145,7 @@ def _load(name: str, path: Path) -> types.ModuleType:
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules[name] = module
-    spec.loader.exec_module(module)  # type: ignore[attr-defined]
+    spec.loader.exec_module(module)
     return module
 
 
@@ -185,15 +185,18 @@ def _run(coro: Any) -> Any:
 # =============================================================================
 def test_policies_map_capabilities() -> None:
     policies = {f"{p.method} {p.pattern.pattern}": p for p in rbac.build_default_policies()}
-    assert rbac.RBACMiddleware(_InnerApp()).match(
-        "GET", "/api/v1/dashboard/snapshot"
-    ).capability == "dash.view.live"
-    assert rbac.RBACMiddleware(_InnerApp()).match(
-        "GET", "/api/v1/audit/events"
-    ).capability == "audit.view"
-    assert rbac.RBACMiddleware(_InnerApp()).match(
-        "POST", "/api/v1/admin/users"
-    ).capability == "platform.manage_users"
+    assert (
+        rbac.RBACMiddleware(_InnerApp()).match("GET", "/api/v1/dashboard/snapshot").capability
+        == "dash.view.live"
+    )
+    assert (
+        rbac.RBACMiddleware(_InnerApp()).match("GET", "/api/v1/audit/events").capability
+        == "audit.view"
+    )
+    assert (
+        rbac.RBACMiddleware(_InnerApp()).match("POST", "/api/v1/admin/users").capability
+        == "platform.manage_users"
+    )
     assert policies  # no vacío
 
 

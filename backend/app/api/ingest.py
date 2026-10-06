@@ -135,7 +135,7 @@ async def ingest_webhook(
         # 1-2. Bytes crudos + autenticación (firma HMAC + anti-replay) sin parsear.
         body = await request.body()
         # Alerta de payload > 64 KB (RNF-07.d): se registra el máximo observado.
-        if len(body) > INGEST_MAX_PAYLOAD_BYTES._value.get():  # type: ignore[attr-defined]
+        if len(body) > INGEST_MAX_PAYLOAD_BYTES._value.get():
             INGEST_MAX_PAYLOAD_BYTES.set(len(body))
         identity: WebhookIdentity = await authenticate_webhook(request, session, body=body)
         actor = identity.webhook_id

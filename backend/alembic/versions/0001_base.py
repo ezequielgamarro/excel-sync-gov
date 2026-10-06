@@ -19,6 +19,7 @@ T7 (Fase F1) — marco base de migraciones. NO crea tablas (eso es T8–T14); so
 
 Idempotente: up usa ``IF NOT EXISTS`` / ``OR REPLACE``; down usa ``IF EXISTS``.
 """
+
 from typing import Sequence, Union
 
 from alembic import op

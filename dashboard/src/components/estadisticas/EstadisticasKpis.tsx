@@ -61,11 +61,7 @@ export function EstadisticasKpis({ totales, kpis }: EstadisticasKpisProps): JSX.
     <div className="grid grid-cols-1 gap-[var(--grid-gutter)] sm:grid-cols-2 xl:grid-cols-4">
       <KpiCard label="TOTAL CONSULTAS" value={totalConsultas} testKey="total-consultas" />
       <KpiCard label="APREHENDIDOS" value={aprehendidos} testKey="aprehendidos" />
-      <KpiCard
-        label="VEHÍCULOS SECUESTRADOS"
-        value={vehiculos}
-        testKey="vehiculos-secuestrados"
-      />
+      <KpiCard label="VEHÍCULOS SECUESTRADOS" value={vehiculos} testKey="vehiculos-secuestrados" />
       <KpiCard label="ARMAS SECUESTRADAS" value={armas} testKey="armas-secuestradas" />
     </div>
   );

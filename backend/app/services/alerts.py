@@ -77,7 +77,7 @@ class MetricsSnapshot:
     sql_debounce_rate: float | None = None
 
     def value_for(self, metric: str) -> float | None:
-        return getattr(self, metric, None)  # type: ignore[no-any-return]
+        return getattr(self, metric, None)
 
 
 @dataclass(frozen=True)
@@ -325,7 +325,7 @@ def _wss_connections() -> int | None:
 
 def _max_payload_bytes() -> int | None:
     """Mayor payload de ingesta observado (gauge ``ingest_max_payload_bytes``)."""
-    value = INGEST_MAX_PAYLOAD_BYTES._value.get()  # type: ignore[attr-defined]
+    value = INGEST_MAX_PAYLOAD_BYTES._value.get()
     return int(value) if value and value > 0 else None
 
 
@@ -351,7 +351,7 @@ def collect_metrics_snapshot(
     if not room_active:
         wss_connections_active = None
     if sql_debounce_rate is None:
-        sql_debounce_rate = SQL_DEBOUNCE_RATIO._value.get()  # type: ignore[attr-defined]
+        sql_debounce_rate = SQL_DEBOUNCE_RATIO._value.get()
     total = _count_sum("http_requests_total")
     rejections = _count_sum("http_responses_4xx_5xx_total")
     rejection_rate = (rejections / total) if total > 0 else None

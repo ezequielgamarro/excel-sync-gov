@@ -30,7 +30,7 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Protocol, cast, runtime_checkable
 
 import httpx
 from cryptography.hazmat.primitives import hashes, serialization
@@ -272,11 +272,11 @@ def _normalize_kpis(grid: dict[str, list[list[str]]]) -> dict[str, Any]:
     headers, records = _rows(grid, SHEET_KPIS)
     index = _header_map(SHEET_KPIS, headers)
     by_id: dict[str, list[str]] = {}
-    for record in records:
-        kpi_id = _cell(record, index, "kpi_id").strip()
+    for row in records:
+        kpi_id = _cell(row, index, "kpi_id").strip()
         if kpi_id in by_id:
             raise ReconciliationLayoutError(f"KPI duplicado '{kpi_id}'.")
-        by_id[kpi_id] = record
+        by_id[kpi_id] = row
     now = datetime.now(timezone.utc).isoformat()
     kpis: dict[str, Any] = {}
     for kpi_id in KPIS:
@@ -316,11 +316,11 @@ def _normalize_regional(grid: dict[str, list[list[str]]]) -> list[dict[str, Any]
     headers, records = _rows(grid, SHEET_REGIONAL)
     index = _header_map(SHEET_REGIONAL, headers)
     by_unit: dict[str, list[str]] = {}
-    for record in records:
-        unit = _cell(record, index, "unidad_id").strip().lower()
+    for row in records:
+        unit = _cell(row, index, "unidad_id").strip().lower()
         if unit not in REGIONAL_UNITS:
             raise ReconciliationLayoutError(f"Unidad regional fuera de allowlist: '{unit}'.")
-        by_unit[unit] = record
+        by_unit[unit] = row
     items: list[dict[str, Any]] = []
     for unit in REGIONAL_UNITS:
         record = by_unit.get(unit)
@@ -348,11 +348,11 @@ def _normalize_turnos(grid: dict[str, list[list[str]]]) -> list[dict[str, Any]]:
     headers, records = _rows(grid, SHEET_TURNOS)
     index = _header_map(SHEET_TURNOS, headers)
     by_turno: dict[str, list[str]] = {}
-    for record in records:
-        turno = _cell(record, index, "turno_id").strip().upper()
+    for row in records:
+        turno = _cell(row, index, "turno_id").strip().upper()
         if turno not in TURNOS:
             raise ReconciliationLayoutError(f"Turno fuera de allowlist: '{turno}'.")
-        by_turno[turno] = record
+        by_turno[turno] = row
     items: list[dict[str, Any]] = []
     for turno in TURNOS:
         record = by_turno.get(turno)
@@ -367,8 +367,12 @@ def _normalize_turnos(grid: dict[str, list[list[str]]]) -> list[dict[str, Any]]:
         items.append(
             {
                 "turno_id": turno,
-                "inicio_min": _to_int(_cell(record, index, "inicio_min"), defaults["inicio_min"]),
-                "fin_min": _to_int(_cell(record, index, "fin_min"), defaults["fin_min"]),
+                "inicio_min": _to_int(
+                    _cell(cast("list[str]", record), index, "inicio_min"), defaults["inicio_min"]
+                ),
+                "fin_min": _to_int(
+                    _cell(cast("list[str]", record), index, "fin_min"), defaults["fin_min"]
+                ),
                 "label": label,
                 "intervenciones": intervenciones,
                 "variacion_abs": variacion_abs,
@@ -564,7 +568,9 @@ class ServiceAccountSheetsClient:
         token = await self._access_token_value()
         client = await self._http()
         ranges = [f"{sheet}{self._range_suffix}" for sheet in ALL_SHEETS]
-        params: list[tuple[str, str]] = [("ranges", rng) for rng in ranges]
+        params: list[tuple[str, str | int | float | bool | None]] = [
+            ("ranges", rng) for rng in ranges
+        ]
         params.extend([("majorDimension", "ROWS"), ("valueRenderOption", "FORMATTED_VALUE")])
         response = await client.get(
             f"{self._api_base}/spreadsheets/{doc_id}/values:batchGet",

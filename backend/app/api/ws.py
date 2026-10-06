@@ -271,9 +271,7 @@ async def ws_dashboard(websocket: WebSocket) -> None:
     try:
         tasks = [
             asyncio.create_task(_receive_loop(websocket, state)),
-            asyncio.create_task(
-                _forward_loop(websocket, room_id, state)
-            ),
+            asyncio.create_task(_forward_loop(websocket, room_id, state)),
             asyncio.create_task(
                 _heartbeat_loop(
                     websocket,

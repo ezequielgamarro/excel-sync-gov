@@ -20,7 +20,11 @@ const DATA = [
 describe("BarrasHorizontalesChart", () => {
   it("renderiza las barras horizontales con la serie real", () => {
     render(
-      <BarrasHorizontalesChart title="Vehículos Secuestrados por Regional" data={DATA} testId="barras-test" />,
+      <BarrasHorizontalesChart
+        title="Vehículos Secuestrados por Regional"
+        data={DATA}
+        testId="barras-test"
+      />,
     );
     expect(screen.getByTestId("barras-test")).toBeInTheDocument();
     expect(screen.getByText("Vehículos Secuestrados por Regional")).toBeInTheDocument();

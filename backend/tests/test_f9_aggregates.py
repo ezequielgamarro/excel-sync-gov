@@ -99,7 +99,7 @@ def _install_stubs() -> None:
         ("app.services", _BACKEND / "app" / "services"),
     ):
         pkg = types.ModuleType(name)
-        pkg.__path__ = [str(path)]  # type: ignore[attr-defined]
+        pkg.__path__ = [str(path)]
         sys.modules.setdefault(name, pkg)
 
     class _Settings:
@@ -115,10 +115,19 @@ def _install_stubs() -> None:
     sys.modules["app.core.logging"] = logging_mod
 
     tables_mod = types.ModuleType("app.models.tables")
-    tables_mod.KPIS = ("total_consultas_sifcop", "personas_capturadas", "vehiculos_secuestrados", "armas_secuestradas")  # type: ignore[attr-defined]
+    tables_mod.KPIS = (  # type: ignore[attr-defined]
+        "total_consultas_sifcop",
+        "personas_capturadas",
+        "vehiculos_secuestrados",
+        "armas_secuestradas",
+    )
     tables_mod.TURNOS = ("MAÑANA", "TARDE", "NOCHE")  # type: ignore[attr-defined]
-    tables_mod.agg_hourly = _Table("agg_hourly", ("value", "kpi_id", "unidad_id", "turno_id", "bucket"))  # type: ignore[attr-defined]
-    tables_mod.agg_daily = _Table("agg_daily", ("value", "bucket", "kpi_id", "unidad_id", "turno_id"))  # type: ignore[attr-defined]
+    tables_mod.agg_hourly = _Table(  # type: ignore[attr-defined]
+        "agg_hourly", ("value", "kpi_id", "unidad_id", "turno_id", "bucket")
+    )
+    tables_mod.agg_daily = _Table(  # type: ignore[attr-defined]
+        "agg_daily", ("value", "bucket", "kpi_id", "unidad_id", "turno_id")
+    )
     sys.modules["app.models.tables"] = tables_mod
 
     sqlalchemy_mod = types.ModuleType("sqlalchemy")
@@ -144,12 +153,12 @@ def _load() -> types.ModuleType:
         assert spec is not None and spec.loader is not None
         module = importlib.util.module_from_spec(spec)
         sys.modules["app.services.aggregate"] = module
-        getattr(spec.loader, "exec_module")(module)
+        spec.loader.exec_module(module)
         return module
 
 
 aggregate = _load()
-aggregate.canonical_tz = lambda: _TZ_MINUS_3  # type: ignore[assignment]
+aggregate.canonical_tz = lambda: _TZ_MINUS_3  # type: ignore[attr-defined]
 
 
 class _Result:

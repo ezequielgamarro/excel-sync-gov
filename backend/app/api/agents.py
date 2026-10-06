@@ -117,8 +117,7 @@ async def rotate_secret(
             "created": result.created,
             "overlap_until": result.overlap_until.isoformat() if result.overlap_until else None,
             "message": (
-                "Guarde el secreto en Script Properties del Apps Script; "
-                "no se volverá a mostrar."
+                "Guarde el secreto en Script Properties del Apps Script; no se volverá a mostrar."
             ),
         },
     )

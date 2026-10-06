@@ -135,9 +135,7 @@ class MetricsMiddleware:
             PAYLOAD_SIZE.labels(direction="request").observe(request_size)
             PAYLOAD_SIZE.labels(direction="response").observe(size)
             if status.startswith("4") or status.startswith("5"):
-                RESPONSE_REJECTIONS.labels(
-                    method=method, path=path_label, status=status
-                ).inc()
+                RESPONSE_REJECTIONS.labels(method=method, path=path_label, status=status).inc()
 
 
 def render_metrics() -> Response:

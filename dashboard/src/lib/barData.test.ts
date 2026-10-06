@@ -4,15 +4,63 @@ import type { BarFilters } from "./barData";
 import type { ConsultaGroup, RegionalItem, TurnoItem } from "../types";
 
 const REGIONAL: RegionalItem[] = [
-  { unidad_id: "capital", label: "Capital", intervenciones: 1000, variacion_abs: 20, variacion_pct: 2.04, rank: 1 },
-  { unidad_id: "sur", label: "Sur", intervenciones: 500, variacion_abs: -10, variacion_pct: -1.96, rank: 2 },
-  { unidad_id: "este", label: "Este", intervenciones: 0, variacion_abs: 0, variacion_pct: 0, rank: 0 },
+  {
+    unidad_id: "capital",
+    label: "Capital",
+    intervenciones: 1000,
+    variacion_abs: 20,
+    variacion_pct: 2.04,
+    rank: 1,
+  },
+  {
+    unidad_id: "sur",
+    label: "Sur",
+    intervenciones: 500,
+    variacion_abs: -10,
+    variacion_pct: -1.96,
+    rank: 2,
+  },
+  {
+    unidad_id: "este",
+    label: "Este",
+    intervenciones: 0,
+    variacion_abs: 0,
+    variacion_pct: 0,
+    rank: 0,
+  },
 ];
 
 const TURNOS: TurnoItem[] = [
-  { turno_id: "MAÑANA", inicio_min: 360, fin_min: 840, label: "MAÑANA", intervenciones: 600, variacion_abs: 15, variacion_pct: 2.56, estado: "cerrada" },
-  { turno_id: "TARDE", inicio_min: 840, fin_min: 1320, label: "TARDE", intervenciones: 400, variacion_abs: -5, variacion_pct: -1.23, estado: "en_curso" },
-  { turno_id: "NOCHE", inicio_min: 1320, fin_min: 2160, label: "NOCHE", intervenciones: 200, variacion_abs: 0, variacion_pct: 0, estado: "pendiente" },
+  {
+    turno_id: "MAÑANA",
+    inicio_min: 360,
+    fin_min: 840,
+    label: "MAÑANA",
+    intervenciones: 600,
+    variacion_abs: 15,
+    variacion_pct: 2.56,
+    estado: "cerrada",
+  },
+  {
+    turno_id: "TARDE",
+    inicio_min: 840,
+    fin_min: 1320,
+    label: "TARDE",
+    intervenciones: 400,
+    variacion_abs: -5,
+    variacion_pct: -1.23,
+    estado: "en_curso",
+  },
+  {
+    turno_id: "NOCHE",
+    inicio_min: 1320,
+    fin_min: 2160,
+    label: "NOCHE",
+    intervenciones: 200,
+    variacion_abs: 0,
+    variacion_pct: 0,
+    estado: "pendiente",
+  },
 ];
 
 const BASE: BarFilters = { turno: "TODOS", unidad: "TODAS", rango: "24h" };

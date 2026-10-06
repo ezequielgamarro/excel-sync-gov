@@ -45,8 +45,22 @@ SCAN_FILES = [
 ]
 SKIP_DIRS = {"node_modules", "__pycache__", ".git", "dist", "build", ".venv"}
 TEXT_SUFFIXES = {
-    ".py", ".gs", ".ts", ".tsx", ".js", ".mjs", ".cjs", ".json", ".yaml",
-    ".yml", ".toml", ".md", ".tf", ".env", ".example", ".txt",
+    ".py",
+    ".gs",
+    ".ts",
+    ".tsx",
+    ".js",
+    ".mjs",
+    ".cjs",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".md",
+    ".tf",
+    ".env",
+    ".example",
+    ".txt",
 }
 
 # --- Secretos hardcodeados ----------------------------------------------------
@@ -126,9 +140,7 @@ def scan() -> list[str]:
                         f"{path.relative_to(ROOT)}:{number}: posible secreto hardcodeado ({key})"
                     )
             if LOG_CALL_RE.search(line) and PII_IN_LOG_RE.search(line):
-                findings.append(
-                    f"{path.relative_to(ROOT)}:{number}: posible PII/volcado en log"
-                )
+                findings.append(f"{path.relative_to(ROOT)}:{number}: posible PII/volcado en log")
             if OBSOLETE_DESIGN_RE.search(line) and not NEGATION_RE.search(line):
                 findings.append(
                     f"{path.relative_to(ROOT)}:{number}: referencia a diseño obsoleto (IdP externo)"

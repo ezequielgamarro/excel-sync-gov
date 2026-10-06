@@ -38,7 +38,7 @@ def _install_stubs() -> None:
         ("app.services", _BACKEND / "app" / "services"),
     ):
         pkg = types.ModuleType(name)
-        pkg.__path__ = [str(path)]  # type: ignore[attr-defined]
+        pkg.__path__ = [str(path)]
         sys.modules.setdefault(name, pkg)
 
     # --- Dependencias de terceros --------------------------------------------
@@ -106,7 +106,12 @@ def _install_stubs() -> None:
 
     # --- Proyecciones de tablas ----------------------------------------------
     tables_mod = types.ModuleType("app.models.tables")
-    tables_mod.KPIS = ("total_consultas_sifcop", "personas_capturadas", "vehiculos_secuestrados", "armas_secuestradas")  # type: ignore[attr-defined]
+    tables_mod.KPIS = (  # type: ignore[attr-defined]
+        "total_consultas_sifcop",
+        "personas_capturadas",
+        "vehiculos_secuestrados",
+        "armas_secuestradas",
+    )
     tables_mod.REGIONAL_UNITS = ("capital", "sur", "este", "oeste", "norte")  # type: ignore[attr-defined]
     tables_mod.TURNOS = ("MAÑANA", "TARDE", "NOCHE")  # type: ignore[attr-defined]
     tables_mod.snapshot_current = object()  # type: ignore[attr-defined]
@@ -150,7 +155,7 @@ def _load() -> types.ModuleType:
         assert spec is not None and spec.loader is not None
         module = importlib.util.module_from_spec(spec)
         sys.modules["app.services.reconciliation"] = module
-        getattr(spec.loader, "exec_module")(module)
+        spec.loader.exec_module(module)
         return module
 
 
@@ -166,11 +171,12 @@ _TURNOS = {
 def _estado_at(turno: str, hour: int, minute: int = 0) -> str:
     fixed = datetime(2026, 10, 3, hour, minute, tzinfo=timezone.utc)
     original = reconciliation._local_now
-    reconciliation._local_now = lambda tz: fixed
+    reconciliation._local_now = lambda tz: fixed  # type: ignore[attr-defined]
     try:
-        return reconciliation._derive_estado(_TURNOS[turno], _TZ)
+        estado: str = reconciliation._derive_estado(_TURNOS[turno], _TZ)
+        return estado
     finally:
-        reconciliation._local_now = original
+        reconciliation._local_now = original  # type: ignore[attr-defined]
 
 
 def test_manana_window() -> None:

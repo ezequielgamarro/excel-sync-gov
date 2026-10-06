@@ -80,7 +80,9 @@ describe("HospitalDashboard", () => {
     expect(
       await screen.findByRole("group", { name: "Total Lesiones Culposas: 8" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("group", { name: "Total Heridos Arma de Fuego: 10" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("group", { name: "Total Heridos Arma de Fuego: 10" }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Total Violencia Familiar: 12" })).toBeInTheDocument();
     expect(screen.getByTestId("chart-hospital-causas")).toBeInTheDocument();
     expect(screen.queryByTestId("chart-hospital-localidades")).toBeNull();

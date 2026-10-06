@@ -29,6 +29,7 @@ Decisiones de diseño (spec §7.9, §7.7):
 
 Idempotente: up con ``IF NOT EXISTS``; down con ``IF EXISTS``.
 """
+
 from typing import Sequence, Union
 
 from alembic import op

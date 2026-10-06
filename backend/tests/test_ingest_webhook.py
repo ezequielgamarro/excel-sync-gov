@@ -24,9 +24,9 @@ import logging
 import sys
 import types
 import uuid
-from datetime import date, datetime, timezone
+from datetime import date
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 _BACKEND = Path(__file__).resolve().parents[1]
 if str(_BACKEND) not in sys.path:
@@ -76,7 +76,7 @@ def _install_stubs() -> None:
         ("app.api", _BACKEND / "app" / "api"),
     ):
         pkg = types.ModuleType(name)
-        pkg.__path__ = [str(path)]  # type: ignore[attr-defined]
+        pkg.__path__ = [str(path)]
         sys.modules.setdefault(name, pkg)
 
     errors_mod = types.ModuleType("app.core.errors")
@@ -208,7 +208,7 @@ def _load_module(name: str, path: Path) -> types.ModuleType:
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules[name] = module
-    getattr(spec.loader, "exec_module")(module)
+    spec.loader.exec_module(module)
     return module
 
 
@@ -216,7 +216,6 @@ def _load_endpoint() -> types.ModuleType:
     try:
         import fastapi  # noqa: F401
         import sqlalchemy  # noqa: F401
-
         from app.api import ingest
 
         return ingest
@@ -286,8 +285,9 @@ def _json_of(response: Any) -> dict[str, Any]:
     if body is None:
         body = getattr(response, "body", b"")
     if isinstance(body, bytes):
-        return json.loads(body)
-    return body
+        parsed: dict[str, Any] = json.loads(body)
+        return parsed
+    return cast("dict[str, Any]", body)
 
 
 def _expect_api_error(coro: Any) -> Any:
@@ -305,7 +305,7 @@ def test_invalid_signature_rejected_401() -> None:
     async def _reject(*_a: Any, **_k: Any) -> Any:
         raise _StubAPIError(401, "UNAUTHORIZED", "Firma HMAC-SHA256 inválida.")
 
-    ingest.authenticate_webhook = _reject
+    ingest.authenticate_webhook = _reject  # type: ignore[attr-defined]
     exc = _expect_api_error(ingest.ingest_webhook(_FakeRequest(b"{}"), _FakeSession()))
     assert getattr(exc, "status_code", 0) == 401
     assert getattr(exc, "code", "") == "UNAUTHORIZED"
@@ -315,7 +315,7 @@ def test_replay_rejected_409() -> None:
     async def _reject(*_a: Any, **_k: Any) -> Any:
         raise _StubAPIError(409, "ANTI_REPLAY", "Nonce ya visto.")
 
-    ingest.authenticate_webhook = _reject
+    ingest.authenticate_webhook = _reject  # type: ignore[attr-defined]
     exc = _expect_api_error(ingest.ingest_webhook(_FakeRequest(b"{}"), _FakeSession()))
     assert getattr(exc, "status_code", 0) == 409
     assert getattr(exc, "code", "") == "ANTI_REPLAY"
@@ -333,11 +333,11 @@ def test_duplicate_returns_200_without_republish() -> None:
     async def _publish(**kwargs: Any) -> None:
         publish_calls.append(kwargs)
 
-    ingest.authenticate_webhook = _auth
-    ingest.validate_snapshot = lambda *a, **k: _validated()
-    ingest.enforce_size_limit = lambda *a, **k: None
-    ingest.persist_webhook = _persist
-    ingest.publish_snapshot = _publish
+    ingest.authenticate_webhook = _auth  # type: ignore[attr-defined]
+    ingest.validate_snapshot = lambda *a, **k: _validated()  # type: ignore[attr-defined]
+    ingest.enforce_size_limit = lambda *a, **k: None  # type: ignore[attr-defined]
+    ingest.persist_webhook = _persist  # type: ignore[attr-defined]
+    ingest.publish_snapshot = _publish  # type: ignore[attr-defined]
 
     session = _FakeSession()
     response = _run(ingest.ingest_webhook(_FakeRequest(b"{}"), session))
@@ -359,11 +359,11 @@ def test_accepted_returns_202_and_publishes() -> None:
     async def _publish(**kwargs: Any) -> None:
         publish_calls.append(kwargs)
 
-    ingest.authenticate_webhook = _auth
-    ingest.validate_snapshot = lambda *a, **k: _validated()
-    ingest.enforce_size_limit = lambda *a, **k: None
-    ingest.persist_webhook = _persist
-    ingest.publish_snapshot = _publish
+    ingest.authenticate_webhook = _auth  # type: ignore[attr-defined]
+    ingest.validate_snapshot = lambda *a, **k: _validated()  # type: ignore[attr-defined]
+    ingest.enforce_size_limit = lambda *a, **k: None  # type: ignore[attr-defined]
+    ingest.persist_webhook = _persist  # type: ignore[attr-defined]
+    ingest.publish_snapshot = _publish  # type: ignore[attr-defined]
 
     session = _FakeSession()
     response = _run(ingest.ingest_webhook(_FakeRequest(b"{}"), session))
@@ -383,8 +383,8 @@ def test_oversized_payload_rejected_413() -> None:
     def _too_large(*_a: Any, **_k: Any) -> None:
         raise _StubAPIError(413, "PAYLOAD_TOO_LARGE", "Payload supera el límite.")
 
-    ingest.authenticate_webhook = _auth
-    ingest.enforce_size_limit = _too_large
+    ingest.authenticate_webhook = _auth  # type: ignore[attr-defined]
+    ingest.enforce_size_limit = _too_large  # type: ignore[attr-defined]
     exc = _expect_api_error(ingest.ingest_webhook(_FakeRequest(b"{}"), _FakeSession()))
     assert getattr(exc, "status_code", 0) == 413
     assert getattr(exc, "code", "") == "PAYLOAD_TOO_LARGE"

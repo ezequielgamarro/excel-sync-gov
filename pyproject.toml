@@ -95,6 +95,13 @@ extend-exclude = [
 select = ["E", "F", "W", "I", "B"]
 ignore = []
 
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI inyecta dependencias y parámetros de consulta mediante llamadas en los
+# valores por defecto (`Depends(...)`, `Query(...)`). Son llamadas inmutables en
+# la práctica (las resuelve el framework en cada request), por lo que B008 es un
+# falso positivo para este patrón y se declaran explícitamente como tales.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query"]
+
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
@@ -117,12 +124,54 @@ strict = true
 # configuración de política. No se fija `files` para no interferir con las
 # rutas que pasa CI (y para typecheckear cualquier paquete nuevo sin tocar esto).
 warn_unused_configs = true
+# SQLAlchemy 2.1 usa directivas `# mypy: disable-error-code=...` con códigos
+# (p. ej. `untyped-decorator`) que mypy 1.14 aún no reconoce y que se reportan
+# dentro de sus propios stubs como `[misc]`. Se desactiva ese código para no
+# abortar el typecheck conservando la información de tipos de SQLAlchemy.
+disable_error_code = ["misc"]
 
 # jsonschema no distribuye marcador `py.typed` (PEP 561); sus llamadas se tratan
 # como `Any` para que el typecheck estricto no dependa de un stub de terceros.
 [[tool.mypy.overrides]]
 module = ["jsonschema"]
 ignore_missing_imports = true
+
+# pandas TAMPOCO distribuye marcador `py.typed` (PEP 561); sin `pandas-stubs`
+# instalado, mypy lo trataría como dependencia no tipada y bloquearía el chequeo
+# del endpoint de planillas. Se ignoran sus imports (el acceso dinámico a
+# DataFrame/Series se anota explícitamente en el código).
+[[tool.mypy.overrides]]
+module = ["pandas"]
+ignore_missing_imports = true
+
+# El SDK/exporter OTLP son dependencias OPCIONALES: `tracing.py` degrada con
+# elegancia si no están instaladas (imports dentro de try/except). Se marcan
+# como ignorables para no acoplar el typecheck a su presencia.
+[[tool.mypy.overrides]]
+module = ["opentelemetry.sdk.*", "opentelemetry.exporter.*"]
+ignore_missing_imports = true
+
+# `_pytest.python_api` importa numpy a nivel de tipos; los stubs de numpy 2.x
+# usan sintaxis PEP 695 (`type X = ...`) no soportada al fijar
+# `python_version = "3.11"`. Se omite ese módulo auxiliar de pytest (no se usa
+# `pytest.approx` en la suite) para no abortar el typecheck.
+[[tool.mypy.overrides]]
+module = ["_pytest.python_api"]
+follow_imports = "skip"
+
+# pytest es una dependencia SÓLO de la suite de tests; el job de CI de
+# lint/typecheck instala únicamente `ruff`, `mypy` y `backend/requirements.txt`,
+# por lo que no está garantizado en el entorno de mypy. Se marca opcional para
+# que `mypy backend` no dependa de su presencia.
+[[tool.mypy.overrides]]
+module = ["pytest", "_pytest", "_pytest.*"]
+ignore_missing_imports = true
+
+# En tests, los decoradores de pytest (p. ej. `@pytest.mark.skipif`) pueden
+# quedar sin tipar si pytest no está instalado; no aportan al chequeo estricto.
+[[tool.mypy.overrides]]
+module = ["test_estadisticas_excel_policia"]
+disallow_untyped_decorators = false
 
 # =============================================================================
 # pytest — F9 (T65..T71): tests de backend (unidad + integración)

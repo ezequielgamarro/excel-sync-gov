@@ -19,16 +19,16 @@ from __future__ import annotations
 import asyncio
 import uuid
 from datetime import date, datetime, timezone
-
-from sqlalchemy.dialects.postgresql import insert as pg_insert
+from typing import Any
 
 from app.models.tables import snapshot_current
 from app.services.db import dispose_engine, get_session
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 DOC_ID = "sifcop-resumen"
 
 
-def _document(event_id: str) -> dict:
+def _document(event_id: str) -> dict[str, Any]:
     """Documento de demostración con la forma exacta del contrato de snapshot."""
     return {
         "schema_version": "1.0.0",
@@ -46,25 +46,122 @@ def _document(event_id: str) -> dict:
                 "armas_secuestradas": {"label": "Armas secuestradas", "value": 57},
             },
             "regional": [
-                {"unidad_id": "capital", "intervenciones": 64210, "variacion_abs": 1200, "variacion_pct": 1.9, "rank": 1},
-                {"unidad_id": "sur", "intervenciones": 38900, "variacion_abs": 450, "variacion_pct": 1.2, "rank": 2},
-                {"unidad_id": "este", "intervenciones": 32150, "variacion_abs": -300, "variacion_pct": -0.9, "rank": 3},
-                {"unidad_id": "oeste", "intervenciones": 27840, "variacion_abs": 220, "variacion_pct": 0.8, "rank": 4},
-                {"unidad_id": "norte", "intervenciones": 21632, "variacion_abs": 80, "variacion_pct": 0.4, "rank": 5},
+                {
+                    "unidad_id": "capital",
+                    "intervenciones": 64210,
+                    "variacion_abs": 1200,
+                    "variacion_pct": 1.9,
+                    "rank": 1,
+                },
+                {
+                    "unidad_id": "sur",
+                    "intervenciones": 38900,
+                    "variacion_abs": 450,
+                    "variacion_pct": 1.2,
+                    "rank": 2,
+                },
+                {
+                    "unidad_id": "este",
+                    "intervenciones": 32150,
+                    "variacion_abs": -300,
+                    "variacion_pct": -0.9,
+                    "rank": 3,
+                },
+                {
+                    "unidad_id": "oeste",
+                    "intervenciones": 27840,
+                    "variacion_abs": 220,
+                    "variacion_pct": 0.8,
+                    "rank": 4,
+                },
+                {
+                    "unidad_id": "norte",
+                    "intervenciones": 21632,
+                    "variacion_abs": 80,
+                    "variacion_pct": 0.4,
+                    "rank": 5,
+                },
             ],
             "turnos": [
-                {"turno_id": "MAÑANA", "inicio_min": 360, "fin_min": 840, "label": "Mañana", "intervenciones": 76500, "variacion_abs": 900, "variacion_pct": 1.2, "estado": "cerrada"},
-                {"turno_id": "TARDE", "inicio_min": 840, "fin_min": 1320, "label": "Tarde", "intervenciones": 68200, "variacion_abs": -400, "variacion_pct": -0.6, "estado": "en_curso"},
-                {"turno_id": "NOCHE", "inicio_min": 1320, "fin_min": 2160, "label": "Noche", "intervenciones": 40032, "variacion_abs": 300, "variacion_pct": 0.8, "estado": "pendiente"},
+                {
+                    "turno_id": "MAÑANA",
+                    "inicio_min": 360,
+                    "fin_min": 840,
+                    "label": "Mañana",
+                    "intervenciones": 76500,
+                    "variacion_abs": 900,
+                    "variacion_pct": 1.2,
+                    "estado": "cerrada",
+                },
+                {
+                    "turno_id": "TARDE",
+                    "inicio_min": 840,
+                    "fin_min": 1320,
+                    "label": "Tarde",
+                    "intervenciones": 68200,
+                    "variacion_abs": -400,
+                    "variacion_pct": -0.6,
+                    "estado": "en_curso",
+                },
+                {
+                    "turno_id": "NOCHE",
+                    "inicio_min": 1320,
+                    "fin_min": 2160,
+                    "label": "Noche",
+                    "intervenciones": 40032,
+                    "variacion_abs": 300,
+                    "variacion_pct": 0.8,
+                    "estado": "pendiente",
+                },
             ],
             "ranking": {
                 "top_n": 5,
                 "dependencias": [
-                    {"puesto": 1, "dependencia_id": "dep-1", "comisaria": "Comisaría 1ra Capital", "intervenciones": 8420, "variacion_abs": 320, "variacion_pct": 3.9, "puesto_previo": 2},
-                    {"puesto": 2, "dependencia_id": "dep-2", "comisaria": "Comisaría 2da Capital", "intervenciones": 7910, "variacion_abs": -120, "variacion_pct": -1.5, "puesto_previo": 1},
-                    {"puesto": 3, "dependencia_id": "dep-3", "comisaria": "Comisaría Sur", "intervenciones": 6450, "variacion_abs": 210, "variacion_pct": 3.4, "puesto_previo": 3},
-                    {"puesto": 4, "dependencia_id": "dep-4", "comisaria": "Comisaría Este", "intervenciones": 5230, "variacion_abs": 60, "variacion_pct": 1.2, "puesto_previo": 5},
-                    {"puesto": 5, "dependencia_id": "dep-5", "comisaria": "Comisaría Oeste", "intervenciones": 4890, "variacion_abs": -30, "variacion_pct": -0.6, "puesto_previo": 4},
+                    {
+                        "puesto": 1,
+                        "dependencia_id": "dep-1",
+                        "comisaria": "Comisaría 1ra Capital",
+                        "intervenciones": 8420,
+                        "variacion_abs": 320,
+                        "variacion_pct": 3.9,
+                        "puesto_previo": 2,
+                    },
+                    {
+                        "puesto": 2,
+                        "dependencia_id": "dep-2",
+                        "comisaria": "Comisaría 2da Capital",
+                        "intervenciones": 7910,
+                        "variacion_abs": -120,
+                        "variacion_pct": -1.5,
+                        "puesto_previo": 1,
+                    },
+                    {
+                        "puesto": 3,
+                        "dependencia_id": "dep-3",
+                        "comisaria": "Comisaría Sur",
+                        "intervenciones": 6450,
+                        "variacion_abs": 210,
+                        "variacion_pct": 3.4,
+                        "puesto_previo": 3,
+                    },
+                    {
+                        "puesto": 4,
+                        "dependencia_id": "dep-4",
+                        "comisaria": "Comisaría Este",
+                        "intervenciones": 5230,
+                        "variacion_abs": 60,
+                        "variacion_pct": 1.2,
+                        "puesto_previo": 5,
+                    },
+                    {
+                        "puesto": 5,
+                        "dependencia_id": "dep-5",
+                        "comisaria": "Comisaría Oeste",
+                        "intervenciones": 4890,
+                        "variacion_abs": -30,
+                        "variacion_pct": -0.6,
+                        "puesto_previo": 4,
+                    },
                 ],
             },
         },

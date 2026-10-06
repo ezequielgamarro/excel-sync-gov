@@ -19,7 +19,17 @@ function SectionIcon({ id }: { id: string }): JSX.Element {
   switch (id) {
     case "resumen":
       return (
-        <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <svg
+          viewBox="0 0 24 24"
+          width={18}
+          height={18}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.7}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
           <rect x="3" y="3" width="7" height="9" rx="1" />
           <rect x="14" y="3" width="7" height="5" rx="1" />
           <rect x="14" y="12" width="7" height="9" rx="1" />
@@ -28,7 +38,17 @@ function SectionIcon({ id }: { id: string }): JSX.Element {
       );
     case "incidentes":
       return (
-        <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <svg
+          viewBox="0 0 24 24"
+          width={18}
+          height={18}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.7}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
           <path d="M12 3l9 16H3z" />
           <path d="M12 9v4" />
           <path d="M12 16.5h.01" />
@@ -36,7 +56,17 @@ function SectionIcon({ id }: { id: string }): JSX.Element {
       );
     case "logistica":
       return (
-        <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <svg
+          viewBox="0 0 24 24"
+          width={18}
+          height={18}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.7}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
           <path d="M3 7h11v8H3z" />
           <path d="M14 10h4l3 3v2h-7z" />
           <circle cx="7" cy="17" r="1.6" />
@@ -45,7 +75,17 @@ function SectionIcon({ id }: { id: string }): JSX.Element {
       );
     case "estadisticas":
       return (
-        <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <svg
+          viewBox="0 0 24 24"
+          width={18}
+          height={18}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.7}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
           <path d="M4 20V10" />
           <path d="M10 20V4" />
           <path d="M16 20v-7" />
@@ -55,14 +95,34 @@ function SectionIcon({ id }: { id: string }): JSX.Element {
     case "hospitales":
       // Cruz médica con pulso (ingresos hospitalarios).
       return (
-        <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <svg
+          viewBox="0 0 24 24"
+          width={18}
+          height={18}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.7}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
           <path d="M10 3h4v5h5v4h-5v5h-4v-5H5V8h5z" />
           <path d="M3 20h2l1.5-3 3 5 2-3H21" />
         </svg>
       );
     default:
       return (
-        <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <svg
+          viewBox="0 0 24 24"
+          width={18}
+          height={18}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.7}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
           <path d="M4 6h16" />
           <path d="M4 12h16" />
           <path d="M4 18h10" />
@@ -134,7 +194,10 @@ export function AdminSidebar({
             height={40}
           />
           <div className="flex min-w-0 flex-col leading-tight">
-            <span className="font-display text-sm font-semibold uppercase tracking-[0.06em] text-accent" translate="no">
+            <span
+              className="font-display text-sm font-semibold uppercase tracking-[0.06em] text-accent"
+              translate="no"
+            >
               Policía de Tucumán
             </span>
             <span className="truncate text-[10px] uppercase tracking-[0.06em] text-muted">
@@ -143,7 +206,10 @@ export function AdminSidebar({
           </div>
         </div>
 
-        <nav aria-label="Secciones del panel" className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
+        <nav
+          aria-label="Secciones del panel"
+          className="flex flex-1 flex-col gap-1 overflow-y-auto p-3"
+        >
           {ADMIN_SECTIONS.map((section) => {
             const active = section.id === activeTab;
             return (
@@ -168,7 +234,9 @@ export function AdminSidebar({
         </nav>
 
         <div className="flex flex-col gap-1 border-t border-border p-3">
-          <span className="px-2 pb-1 text-[10px] uppercase tracking-[0.12em] text-muted">Preferencias</span>
+          <span className="px-2 pb-1 text-[10px] uppercase tracking-[0.12em] text-muted">
+            Preferencias
+          </span>
           <button
             type="button"
             onClick={() => onSelect("ayuda")}
@@ -179,7 +247,17 @@ export function AdminSidebar({
                 : "border-transparent text-ink2 hover:border-border hover:bg-surface2 hover:text-ink"
             }`}
           >
-            <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              width={18}
+              height={18}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.7}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
               <circle cx="12" cy="12" r="9" />
               <path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7" />
               <path d="M12 17h.01" />

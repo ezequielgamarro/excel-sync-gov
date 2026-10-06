@@ -54,9 +54,7 @@ def validate_password_policy(password: str, policy: PasswordPolicy) -> None:
         if not re.search(r"\d", password):
             raise PasswordPolicyError("La contraseña debe incluir al menos un dígito.")
         if not _SPECIALS.search(password):
-            raise PasswordPolicyError(
-                "La contraseña debe incluir al menos un carácter especial."
-            )
+            raise PasswordPolicyError("La contraseña debe incluir al menos un carácter especial.")
 
 
 def hash_password(password: str) -> str:

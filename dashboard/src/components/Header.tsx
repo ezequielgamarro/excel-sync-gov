@@ -81,7 +81,10 @@ export function Header({
             >
               Informe Operativo Comparativo
             </h1>
-            <p className="truncate text-[11px] font-medium uppercase tracking-[0.08em] text-muted" translate="no">
+            <p
+              className="truncate text-[11px] font-medium uppercase tracking-[0.08em] text-muted"
+              translate="no"
+            >
               Centro Integrador de Sistemas y Operaciones
             </p>
           </div>

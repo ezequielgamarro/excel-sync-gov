@@ -42,7 +42,9 @@ function ErrorBanner({ message, onRetry }: { message: string; onRetry: () => voi
       className="flex flex-wrap items-center gap-3 rounded-[12px] border border-neg/50 bg-neg/10 px-4 py-3 text-sm font-semibold text-neg"
     >
       <span aria-hidden="true">⛔</span>
-      <span className="flex-1">No se pudieron cargar las estadísticas de hospitales. {message}</span>
+      <span className="flex-1">
+        No se pudieron cargar las estadísticas de hospitales. {message}
+      </span>
       <button
         type="button"
         onClick={onRetry}

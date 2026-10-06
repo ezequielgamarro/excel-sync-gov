@@ -23,14 +23,16 @@ const SECTIONS: Section[] = [
     title: "Cómo leer las tarjetas KPI y sus variaciones",
     body: (
       <ul className="list-disc space-y-1 pl-5">
-        <li>El número grande es el <strong>valor actual</strong> del indicador.</li>
+        <li>
+          El número grande es el <strong>valor actual</strong> del indicador.
+        </li>
         <li>
           El chip de la derecha (▲/▼ + %) es la <strong>variación</strong> respecto al período de
           comparación activo; el pie muestra el valor de referencia y el delta absoluto.
         </li>
         <li>
-          El selector <strong>Comparar vs</strong> (cabecera) cambia el período de referencia:
-          Ayer, Semana anterior, Mes anterior o Año anterior.
+          El selector <strong>Comparar vs</strong> (cabecera) cambia el período de referencia: Ayer,
+          Semana anterior, Mes anterior o Año anterior.
         </li>
         <li>Color verde = sube, rojo = baja, sin flecha = sin cambios.</li>
       </ul>
@@ -79,8 +81,8 @@ const SECTIONS: Section[] = [
           <strong>SIN CONEXIÓN</strong>: sesión no autorizada o revocada; vuelva a iniciar sesión.
         </li>
         <li>
-          <strong>DATOS DESACTUALIZADOS</strong>: aviso cuando pasan más de 120 s sin
-          sincronización real (heartbeat o nueva instantánea).
+          <strong>DATOS DESACTUALIZADOS</strong>: aviso cuando pasan más de 120 s sin sincronización
+          real (heartbeat o nueva instantánea).
         </li>
       </ul>
     ),

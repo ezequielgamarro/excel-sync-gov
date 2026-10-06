@@ -55,7 +55,7 @@ def _install_stubs() -> None:
         ("app.services", _BACKEND / "app" / "services"),
     ):
         pkg = types.ModuleType(name)
-        pkg.__path__ = [str(path)]  # type: ignore[attr-defined]
+        pkg.__path__ = [str(path)]
         sys.modules.setdefault(name, pkg)
 
     class _StubSettings:
@@ -133,7 +133,6 @@ def _install_stubs() -> None:
 def _load_module() -> types.ModuleType:
     try:
         import sqlalchemy  # noqa: F401
-
         from app.services import agents
 
         return agents
@@ -180,13 +179,13 @@ def _install_persistence_doubles() -> None:
     async def _retire_previous_keys(session: Any, **kwargs: Any) -> None:
         _state["retired"] = kwargs
 
-    agents._fetch_registry = _fetch_registry
-    agents._fetch_active_key_ids = _fetch_active_key_ids
-    agents._key_id_exists = _key_id_exists
-    agents._find_active_by_doc = _find_active_by_doc
-    agents._insert_registry = _insert_registry
-    agents._insert_secret = _insert_secret
-    agents._retire_previous_keys = _retire_previous_keys
+    agents._fetch_registry = _fetch_registry  # type: ignore[attr-defined]
+    agents._fetch_active_key_ids = _fetch_active_key_ids  # type: ignore[attr-defined]
+    agents._key_id_exists = _key_id_exists  # type: ignore[attr-defined]
+    agents._find_active_by_doc = _find_active_by_doc  # type: ignore[attr-defined]
+    agents._insert_registry = _insert_registry  # type: ignore[attr-defined]
+    agents._insert_secret = _insert_secret  # type: ignore[attr-defined]
+    agents._retire_previous_keys = _retire_previous_keys  # type: ignore[attr-defined]
 
 
 _install_persistence_doubles()

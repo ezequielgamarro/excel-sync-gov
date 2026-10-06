@@ -25,6 +25,7 @@ sobre ``data_date`` (tipo ``date``). Reutiliza ``app.create_month_partitions``.
 
 Idempotente: up con ``IF NOT EXISTS``; down con ``IF EXISTS`` + ``CASCADE``.
 """
+
 from typing import Sequence, Union
 
 from alembic import op
@@ -69,8 +70,7 @@ _COMMENTS = (
     "COMMENT ON TABLE app.ranking_snapshot IS "
     "'Top 5 por día/turno (histórico de ranking, T11, spec §7.9). Retención "
     "60 meses, particionado mensual.'",
-    "COMMENT ON COLUMN app.ranking_snapshot.puesto IS "
-    "'Posición en el ranking (1..5).'",
+    "COMMENT ON COLUMN app.ranking_snapshot.puesto IS 'Posición en el ranking (1..5).'",
     "COMMENT ON COLUMN app.ranking_snapshot.puesto_previo IS "
     "'Puesto en la instantánea anterior (habilita el destello de cambio, "
     "RF-04.g); NULL si no hay dato previo.'",

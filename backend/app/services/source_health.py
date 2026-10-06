@@ -21,7 +21,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -218,9 +218,7 @@ async def _active_registry_rows(session: AsyncSession) -> list[Any]:
     return list(result.all())
 
 
-async def _current_key_id(
-    session: AsyncSession, webhook_uuid: uuid.UUID, *, now: datetime
-) -> str:
+async def _current_key_id(session: AsyncSession, webhook_uuid: uuid.UUID, *, now: datetime) -> str:
     """``key_id`` vigente del origen (solape de rotación de 24 h, §9.3)."""
     rows = (
         await session.execute(
@@ -237,8 +235,8 @@ async def _current_key_id(
     for key_id, estado, not_before, not_after in rows:
         if str(estado) != "vigente":
             continue
-        nb = _as_utc(not_before)
-        na = _as_utc(not_after)
+        nb = _as_utc(cast("datetime | None", not_before))
+        na = _as_utc(cast("datetime | None", not_after))
         if nb is not None and now < nb:
             continue
         if na is not None and now >= na:

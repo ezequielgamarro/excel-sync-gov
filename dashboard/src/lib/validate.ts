@@ -45,7 +45,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isFiniteNonNegativeInt(value: unknown): value is number {
-  return typeof value === "number" && Number.isFinite(value) && Number.isInteger(value) && value >= 0;
+  return (
+    typeof value === "number" && Number.isFinite(value) && Number.isInteger(value) && value >= 0
+  );
 }
 
 function schemaMajor(version: string): number {
@@ -141,8 +143,12 @@ export function validateSnapshotMessage(raw: unknown): ValidateResult {
       unidad_id: unidadId as UnidadId,
       label: UNIDAD_LABEL[unidadId as UnidadId],
       intervenciones: item.intervenciones,
-      variacion_abs: Number.isFinite(item.variacion_abs as number) ? (item.variacion_abs as number) : 0,
-      variacion_pct: Number.isFinite(item.variacion_pct as number) ? (item.variacion_pct as number) : 0,
+      variacion_abs: Number.isFinite(item.variacion_abs as number)
+        ? (item.variacion_abs as number)
+        : 0,
+      variacion_pct: Number.isFinite(item.variacion_pct as number)
+        ? (item.variacion_pct as number)
+        : 0,
       rank: isFiniteNonNegativeInt(item.rank) ? item.rank : 0,
     });
   }
@@ -174,8 +180,12 @@ export function validateSnapshotMessage(raw: unknown): ValidateResult {
       fin_min: Number.isFinite(item.fin_min as number) ? (item.fin_min as number) : 0,
       label: typeof item.label === "string" ? item.label : (turnoId as string),
       intervenciones: item.intervenciones,
-      variacion_abs: Number.isFinite(item.variacion_abs as number) ? (item.variacion_abs as number) : 0,
-      variacion_pct: Number.isFinite(item.variacion_pct as number) ? (item.variacion_pct as number) : 0,
+      variacion_abs: Number.isFinite(item.variacion_abs as number)
+        ? (item.variacion_abs as number)
+        : 0,
+      variacion_pct: Number.isFinite(item.variacion_pct as number)
+        ? (item.variacion_pct as number)
+        : 0,
       estado: estado === "en_curso" || estado === "cerrada" ? estado : "pendiente",
     });
   }
@@ -195,9 +205,8 @@ export function validateSnapshotMessage(raw: unknown): ValidateResult {
 
   // --- Ranking: hasta 5, orden determinista. ---
   const rankingRaw = payload.ranking;
-  const depRaw = isRecord(rankingRaw) && Array.isArray(rankingRaw.dependencias)
-    ? rankingRaw.dependencias
-    : [];
+  const depRaw =
+    isRecord(rankingRaw) && Array.isArray(rankingRaw.dependencias) ? rankingRaw.dependencias : [];
   const dependencias: RankingItem[] = [];
   for (const item of depRaw) {
     if (!isRecord(item)) continue;
@@ -207,8 +216,12 @@ export function validateSnapshotMessage(raw: unknown): ValidateResult {
       dependencia_id: typeof item.dependencia_id === "string" ? item.dependencia_id : "",
       comisaria: typeof item.comisaria === "string" ? item.comisaria : "",
       intervenciones: item.intervenciones,
-      variacion_abs: Number.isFinite(item.variacion_abs as number) ? (item.variacion_abs as number) : 0,
-      variacion_pct: Number.isFinite(item.variacion_pct as number) ? (item.variacion_pct as number) : 0,
+      variacion_abs: Number.isFinite(item.variacion_abs as number)
+        ? (item.variacion_abs as number)
+        : 0,
+      variacion_pct: Number.isFinite(item.variacion_pct as number)
+        ? (item.variacion_pct as number)
+        : 0,
       puesto_previo: isFiniteNonNegativeInt(item.puesto_previo) ? item.puesto_previo : 0,
     });
   }
@@ -243,7 +256,8 @@ export function validateSnapshotMessage(raw: unknown): ValidateResult {
       turnos,
       ranking: { top_n: 5, dependencias: normalizeRanking(dependencias) },
       freshness: {
-        last_event_ts: typeof freshnessRaw.last_event_ts === "string" ? freshnessRaw.last_event_ts : "",
+        last_event_ts:
+          typeof freshnessRaw.last_event_ts === "string" ? freshnessRaw.last_event_ts : "",
         sheet_modified_at:
           typeof freshnessRaw.sheet_modified_at === "string"
             ? freshnessRaw.sheet_modified_at

@@ -127,7 +127,12 @@ export function BarrasHorizontalesChart({
                   <stop offset="100%" stopColor="#1e90ff" />
                 </linearGradient>
               </defs>
-              <CartesianGrid horizontal={false} vertical stroke="var(--border)" strokeDasharray="2 6" />
+              <CartesianGrid
+                horizontal={false}
+                vertical
+                stroke="var(--border)"
+                strokeDasharray="2 6"
+              />
               <XAxis
                 type="number"
                 allowDecimals={false}

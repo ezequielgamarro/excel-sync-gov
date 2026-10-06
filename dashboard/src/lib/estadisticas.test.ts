@@ -17,9 +17,7 @@ describe("aGrupos", () => {
 
 describe("aSerie", () => {
   it("mapea series {name,value} a puntos {ts,value}", () => {
-    expect(aSerie([{ name: "2026-10-05", value: 12 }])).toEqual([
-      { ts: "2026-10-05", value: 12 },
-    ]);
+    expect(aSerie([{ name: "2026-10-05", value: 12 }])).toEqual([{ ts: "2026-10-05", value: 12 }]);
   });
 
   it("descarta valores no numéricos y conserva el orden", () => {

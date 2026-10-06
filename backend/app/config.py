@@ -94,7 +94,7 @@ class Settings(BaseSettings):
     # las `Script Properties` del script. Nunca se hardcodea ni se versiona.
     webhook_id: str = ""
     webhook_key_id: str = ""
-    webhook_secret: str = ""          # secreto compartido HMAC-SHA256 (256 bits)
+    webhook_secret: str = ""  # secreto compartido HMAC-SHA256 (256 bits)
     webhook_version: str = "1.0.0"
     # Endpoint del origen allowlisted usado por la reconciliación por polling
     # de respaldo ante triggers perdidos (RF-01.i).
@@ -107,19 +107,19 @@ class Settings(BaseSettings):
     secret_manager_path: str = ""
 
     # --- Anti-replay (§2.2.1, RNF-03.f, §10.1) -------------------------------
-    replay_window_seconds: int = 600      # ventana del nonce (cache Redis)
+    replay_window_seconds: int = 600  # ventana del nonce (cache Redis)
     replay_clock_skew_seconds: int = 300  # desalineación temporal máxima
 
     # --- Límites de tamaño de payload (RNF-12.f, §10.1) ----------------------
-    max_payload_plaintext_bytes: int = 262144   # 256 KB (plano)
-    max_payload_compressed_bytes: int = 65536   # 64 KB (comprimido)
+    max_payload_plaintext_bytes: int = 262144  # 256 KB (plano)
+    max_payload_compressed_bytes: int = 65536  # 64 KB (comprimido)
 
     # --- WSS / distribución en tiempo real (F4, §10.3) -----------------------
-    ws_ticket_ttl_seconds: int = 60        # vida del ticket de un solo uso (RNF-03.d)
-    ws_heartbeat_interval_s: int = 15      # heartbeat/ping de aplicación (RNF-05.b)
-    ws_client_timeout_s: int = 45          # cierre 4001 si el cliente calla > 45 s
+    ws_ticket_ttl_seconds: int = 60  # vida del ticket de un solo uso (RNF-03.d)
+    ws_heartbeat_interval_s: int = 15  # heartbeat/ping de aplicación (RNF-05.b)
+    ws_client_timeout_s: int = 45  # cierre 4001 si el cliente calla > 45 s
     ws_max_connections_per_room: int = 50  # RNF-12.d
-    ws_max_connections_global: int = 200   # RNF-12.d
+    ws_max_connections_global: int = 200  # RNF-12.d
     # La clave X.509 del JWKS no aplica; la identidad se valida con el token
     # nativo firmado por este backend (más abajo).
 
@@ -128,10 +128,10 @@ class Settings(BaseSettings):
     # ``jwt_signing_key`` (HS256) o clave privada PEM (RS256) se inyecta desde el
     # secret manager; jamás se hardcodea, versiona ni registra en logs (RNF-13).
     jwt_signing_key: str = ""
-    jwt_algorithm: str = "HS256"                 # HS256 | RS256
+    jwt_algorithm: str = "HS256"  # HS256 | RS256
     jwt_issuer: str = "excel-sync-gov-backend"
     jwt_audience: str = "dashboard-api"
-    jwt_access_token_ttl_seconds: int = 900      # 15 min (RNF-03.b)
+    jwt_access_token_ttl_seconds: int = 900  # 15 min (RNF-03.b)
     jwt_clock_skew_seconds: int = 60
     # Almacén del refresh rotativo: ``memory`` (proceso) o ``redis`` (distribuido).
     jwt_refresh_store: str = "memory"
@@ -140,8 +140,8 @@ class Settings(BaseSettings):
     password_min_length: int = 12
     password_require_complexity: bool = True
     login_max_failures: int = 5
-    login_lockout_seconds: int = 900             # bloqueo máximo por cuenta
-    login_lockout_base_seconds: int = 60         # backoff progresivo base
+    login_lockout_seconds: int = 900  # bloqueo máximo por cuenta
+    login_lockout_base_seconds: int = 60  # backoff progresivo base
 
     # --- RBAC por capacidad y re-verificación (F5, T37, RNF-03.c/e/h) --------
     rbac_enabled: bool = True
@@ -151,8 +151,8 @@ class Settings(BaseSettings):
     wss_role_close_seconds: int = 30
 
     # --- Histórico / export (F4, §10.2, OD-07) -------------------------------
-    history_supervisor_max_days: int = 90     # detalle horario del supervisor
-    history_auditor_max_days: int = 1826      # 60 meses para el auditor
+    history_supervisor_max_days: int = 90  # detalle horario del supervisor
+    history_auditor_max_days: int = 1826  # 60 meses para el auditor
 
     # --- Integración Google Sheets: salud y reconciliación (F6, T45/T46) ------
     # Umbral de modo degradado del origen (RF-01.j): 15 min sin webhook.
@@ -187,13 +187,13 @@ class Settings(BaseSettings):
 
     # --- Alertas configurables (T60, RNF-07.d) -------------------------------
     alerts_enabled: bool = True
-    alert_window_seconds: int = 600            # ventana de evaluación (10 min)
-    alert_latency_p95_seconds: float = 2.0     # p95 de latencia de ingesta
-    alert_rejection_rate: float = 0.01         # tasa de rechazo > 1 %
-    alert_webhook_stale_seconds: int = 300     # último webhook > 5 min
-    alert_payload_max_bytes: int = 65536       # payload > 64 KB
-    alert_sql_debounce_rate: float = 0.01      # debounce SQL > 1 %
-    alert_wss_zero_room_active: bool = True    # WSS a 0 con sala activa
+    alert_window_seconds: int = 600  # ventana de evaluación (10 min)
+    alert_latency_p95_seconds: float = 2.0  # p95 de latencia de ingesta
+    alert_rejection_rate: float = 0.01  # tasa de rechazo > 1 %
+    alert_webhook_stale_seconds: int = 300  # último webhook > 5 min
+    alert_payload_max_bytes: int = 65536  # payload > 64 KB
+    alert_sql_debounce_rate: float = 0.01  # debounce SQL > 1 %
+    alert_wss_zero_room_active: bool = True  # WSS a 0 con sala activa
 
     # --- Anti-CSRF (T63, AM-12) ----------------------------------------------
     # Token ligado a la sesión (bearer) que el cliente reenvía en las mutaciones.

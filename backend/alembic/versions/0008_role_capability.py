@@ -32,6 +32,7 @@ Semántica del mapeo:
 Idempotente: ``ON CONFLICT (role, capability) DO NOTHING``; down con
 ``IF EXISTS``.
 """
+
 from typing import Sequence, Union
 
 from alembic import op

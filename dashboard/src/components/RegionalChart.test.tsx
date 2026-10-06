@@ -9,11 +9,46 @@ import { RegionalChart } from "./RegionalChart";
 import type { RegionalItem } from "../types";
 
 const regional: RegionalItem[] = [
-  { unidad_id: "capital", label: "Capital", intervenciones: 268, variacion_abs: 22, variacion_pct: 8.93, rank: 1 },
-  { unidad_id: "sur", label: "Sur", intervenciones: 142, variacion_abs: -5, variacion_pct: -3.4, rank: 2 },
-  { unidad_id: "este", label: "Este", intervenciones: 98, variacion_abs: 7, variacion_pct: 7.74, rank: 3 },
-  { unidad_id: "oeste", label: "Oeste", intervenciones: 71, variacion_abs: -3, variacion_pct: -4.05, rank: 4 },
-  { unidad_id: "norte", label: "Norte", intervenciones: 0, variacion_abs: 0, variacion_pct: 0, rank: 0 },
+  {
+    unidad_id: "capital",
+    label: "Capital",
+    intervenciones: 268,
+    variacion_abs: 22,
+    variacion_pct: 8.93,
+    rank: 1,
+  },
+  {
+    unidad_id: "sur",
+    label: "Sur",
+    intervenciones: 142,
+    variacion_abs: -5,
+    variacion_pct: -3.4,
+    rank: 2,
+  },
+  {
+    unidad_id: "este",
+    label: "Este",
+    intervenciones: 98,
+    variacion_abs: 7,
+    variacion_pct: 7.74,
+    rank: 3,
+  },
+  {
+    unidad_id: "oeste",
+    label: "Oeste",
+    intervenciones: 71,
+    variacion_abs: -3,
+    variacion_pct: -4.05,
+    rank: 4,
+  },
+  {
+    unidad_id: "norte",
+    label: "Norte",
+    intervenciones: 0,
+    variacion_abs: 0,
+    variacion_pct: 0,
+    rank: 0,
+  },
 ];
 
 describe("RegionalChart (RF-03, T66)", () => {

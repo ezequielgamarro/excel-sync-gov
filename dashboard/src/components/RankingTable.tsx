@@ -81,98 +81,100 @@ export function RankingTable({ dependencias, period }: RankingTableProps): JSX.E
         tabIndex={0}
       >
         <table className="w-full min-w-[520px] border-collapse text-sm">
-        <caption className="sr-only">
-          Ranking de dependencias Top 5 por intervenciones (Posición, Comisaría, Intervenciones,
-          Variación)
-        </caption>
-        <thead>
-          <tr className="border-b border-border-strong text-left text-[11px] uppercase tracking-[0.08em] text-muted">
-            <th scope="col" style={{ width: 110 }} className="pb-2 pl-1">
-              Posición
-            </th>
-            <th scope="col" className="pb-2">
-              Comisaría
-            </th>
-            <th scope="col" style={{ width: 130 }} className="pb-2 pr-4 text-right">
-              Intervenciones
-            </th>
-            <th scope="col" style={{ width: 210 }} className="pb-2 pr-1 text-right">
-              Variación
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {dependencias.length === 0 ? (
-            <tr>
-              <td colSpan={4} className="py-10 text-center">
-                <span className="block font-display text-base font-semibold uppercase text-ink2">
-                  SIN DATOS
-                </span>
-                <span className="text-xs text-muted">sin datos en origen / sin datos en caché</span>
-              </td>
+          <caption className="sr-only">
+            Ranking de dependencias Top 5 por intervenciones (Posición, Comisaría, Intervenciones,
+            Variación)
+          </caption>
+          <thead>
+            <tr className="border-b border-border-strong text-left text-[11px] uppercase tracking-[0.08em] text-muted">
+              <th scope="col" style={{ width: 110 }} className="pb-2 pl-1">
+                Posición
+              </th>
+              <th scope="col" className="pb-2">
+                Comisaría
+              </th>
+              <th scope="col" style={{ width: 130 }} className="pb-2 pr-4 text-right">
+                Intervenciones
+              </th>
+              <th scope="col" style={{ width: 210 }} className="pb-2 pr-1 text-right">
+                Variación
+              </th>
             </tr>
-          ) : (
-            dependencias.map((item, index) => {
-              // Sólo la comparación real («ayer») del snapshot es mostrable.
-              const hasReal = period === undefined || hasRealComparison(period);
-              const variation = hasReal
-                ? formatVariation(item.variacion_abs, item.variacion_pct)
-                : null;
-              const changeLabel = puestoChangeLabel(item);
-              const style = posStyle(item.puesto);
-              return (
-                <tr
-                  key={item.dependencia_id || item.comisaria}
-                  ref={(el) => {
-                    rowRefs.current[index] = el;
-                  }}
-                  tabIndex={0}
-                  onKeyDown={(event) => {
-                    if (event.key === "ArrowDown") {
-                      event.preventDefault();
-                      focusRow(Math.min(index + 1, dependencias.length - 1));
-                    } else if (event.key === "ArrowUp") {
-                      event.preventDefault();
-                      focusRow(Math.max(index - 1, 0));
-                    }
-                  }}
-                  className={`border-b border-border transition-colors hover:bg-surface2 ${
-                    flashing.has(item.dependencia_id) ? "row-flash" : ""
-                  }`}
-                  style={{ height: 34 }}
-                  aria-label={`${item.comisaria}, puesto ${item.puesto}, ${item.intervenciones} intervenciones${
-                    changeLabel ? `, ${changeLabel}` : ""
-                  }`}
-                >
-                  <td className="py-1 pl-1">
-                    <span
-                      className="flex h-6 w-6 items-center justify-center rounded-lg border text-xs font-semibold"
-                      style={style}
-                    >
-                      {item.puesto}
-                    </span>
-                  </td>
-                  <td className="pr-4 text-ink" title={item.comisaria}>
-                    {item.comisaria}
-                  </td>
-                  <td className="num pr-4 text-right text-ink">
-                    {formatInteger(item.intervenciones)}
-                  </td>
-                  <td className="pr-1 text-right">
-                    {variation ? (
-                      <span className="num" style={{ color: toneColorVar(variation.tone) }}>
-                        <span aria-hidden="true">{variation.glyph} </span>
-                        {variation.abs} {variation.pct}
+          </thead>
+          <tbody>
+            {dependencias.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="py-10 text-center">
+                  <span className="block font-display text-base font-semibold uppercase text-ink2">
+                    SIN DATOS
+                  </span>
+                  <span className="text-xs text-muted">
+                    sin datos en origen / sin datos en caché
+                  </span>
+                </td>
+              </tr>
+            ) : (
+              dependencias.map((item, index) => {
+                // Sólo la comparación real («ayer») del snapshot es mostrable.
+                const hasReal = period === undefined || hasRealComparison(period);
+                const variation = hasReal
+                  ? formatVariation(item.variacion_abs, item.variacion_pct)
+                  : null;
+                const changeLabel = puestoChangeLabel(item);
+                const style = posStyle(item.puesto);
+                return (
+                  <tr
+                    key={item.dependencia_id || item.comisaria}
+                    ref={(el) => {
+                      rowRefs.current[index] = el;
+                    }}
+                    tabIndex={0}
+                    onKeyDown={(event) => {
+                      if (event.key === "ArrowDown") {
+                        event.preventDefault();
+                        focusRow(Math.min(index + 1, dependencias.length - 1));
+                      } else if (event.key === "ArrowUp") {
+                        event.preventDefault();
+                        focusRow(Math.max(index - 1, 0));
+                      }
+                    }}
+                    className={`border-b border-border transition-colors hover:bg-surface2 ${
+                      flashing.has(item.dependencia_id) ? "row-flash" : ""
+                    }`}
+                    style={{ height: 34 }}
+                    aria-label={`${item.comisaria}, puesto ${item.puesto}, ${item.intervenciones} intervenciones${
+                      changeLabel ? `, ${changeLabel}` : ""
+                    }`}
+                  >
+                    <td className="py-1 pl-1">
+                      <span
+                        className="flex h-6 w-6 items-center justify-center rounded-lg border text-xs font-semibold"
+                        style={style}
+                      >
+                        {item.puesto}
                       </span>
-                    ) : (
-                      <span className="text-muted">—</span>
-                    )}
-                  </td>
-                </tr>
-              );
-            })
-          )}
-        </tbody>
+                    </td>
+                    <td className="pr-4 text-ink" title={item.comisaria}>
+                      {item.comisaria}
+                    </td>
+                    <td className="num pr-4 text-right text-ink">
+                      {formatInteger(item.intervenciones)}
+                    </td>
+                    <td className="pr-1 text-right">
+                      {variation ? (
+                        <span className="num" style={{ color: toneColorVar(variation.tone) }}>
+                          <span aria-hidden="true">{variation.glyph} </span>
+                          {variation.abs} {variation.pct}
+                        </span>
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
         </table>
       </div>
     </section>

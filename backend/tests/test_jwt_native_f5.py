@@ -38,7 +38,7 @@ _SECRET = "test-signing-key-not-a-real-secret"
 
 
 def _service(**overrides: Any) -> NativeJwtService:
-    base = dict(
+    base: dict[str, Any] = dict(
         issuer=_ISSUER,
         audience=_AUDIENCE,
         signing_key=_SECRET,

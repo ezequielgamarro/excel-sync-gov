@@ -72,13 +72,15 @@ async def _lock_event(session: AsyncSession, event_id: str) -> None:
 
 def _ranking_turno(payload: dict[str, Any]) -> str:
     """Determina el turno al que fotografía el ranking (en_curso → último cerrado)."""
-    turnos = payload.get("turnos", [])
+    turnos: list[dict[str, Any]] = payload.get("turnos", [])
     for item in turnos:
         if item.get("estado") == "en_curso":
-            return item["turno_id"]
+            turno_id: str = item["turno_id"]
+            return turno_id
     for item in reversed(turnos):
         if item.get("estado") == "cerrada":
-            return item["turno_id"]
+            turno_id = item["turno_id"]
+            return turno_id
     return TURNOS[0]
 
 

@@ -182,7 +182,12 @@ export function RegionalChart({ regional, filters, period }: RegionalChartProps)
                 <stop offset="100%" stopColor="#4CC2FF" />
               </linearGradient>
             </defs>
-            <CartesianGrid horizontal={false} vertical stroke="var(--border)" strokeDasharray="2 6" />
+            <CartesianGrid
+              horizontal={false}
+              vertical
+              stroke="var(--border)"
+              strokeDasharray="2 6"
+            />
             <XAxis
               type="number"
               domain={[0, domainMax]}
@@ -199,10 +204,7 @@ export function RegionalChart({ regional, filters, period }: RegionalChartProps)
               width={84}
               tickLine={false}
             />
-            <Tooltip
-              content={<RegionalTooltip />}
-              cursor={{ fill: "var(--accent-soft)" }}
-            />
+            <Tooltip content={<RegionalTooltip />} cursor={{ fill: "var(--accent-soft)" }} />
             <Bar
               dataKey="intervenciones"
               fill="url(#regionalGradient)"
@@ -215,7 +217,13 @@ export function RegionalChart({ regional, filters, period }: RegionalChartProps)
                 <Cell
                   key={item.unidad_id}
                   fill={item.highlight ? "#4cc2ff" : "url(#regionalGradient)"}
-                  fillOpacity={item.highlight ? 1 : item.intervenciones === topValue && topValue > 0 ? 0.95 : 0.8}
+                  fillOpacity={
+                    item.highlight
+                      ? 1
+                      : item.intervenciones === topValue && topValue > 0
+                        ? 0.95
+                        : 0.8
+                  }
                 />
               ))}
               <LabelList

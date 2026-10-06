@@ -24,7 +24,7 @@ import json
 import secrets
 import time as _time
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable, Protocol
+from typing import Any, Callable, Protocol, cast
 
 DEFAULT_ACCESS_TOKEN_TTL_SECONDS = 900
 DEFAULT_CLOCK_SKEW_SECONDS = 60
@@ -114,8 +114,8 @@ class NativeJwtService:
         self,
         *,
         sub: str,
-        roles: list[str] | set[str] | frozenset[str] = (),
-        capabilities: list[str] | set[str] | frozenset[str] = (),
+        roles: list[str] | set[str] | frozenset[str] | tuple[str, ...] = (),
+        capabilities: list[str] | set[str] | frozenset[str] | tuple[str, ...] = (),
         jti: str | None = None,
         now: int | None = None,
     ) -> str:
@@ -240,9 +240,12 @@ class NativeJwtService:
 # dependencia ``cryptography`` se importa de forma perezosa.
 def _rs256_sign(private_key_pem: str, signing_input: bytes) -> bytes:  # pragma: no cover
     from cryptography.hazmat.primitives import hashes, serialization
-    from cryptography.hazmat.primitives.asymmetric import padding
+    from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
-    key = serialization.load_pem_private_key(private_key_pem.encode("utf-8"), password=None)
+    key = cast(
+        rsa.RSAPrivateKey,
+        serialization.load_pem_private_key(private_key_pem.encode("utf-8"), password=None),
+    )
     return key.sign(signing_input, padding.PKCS1v15(), hashes.SHA256())
 
 
@@ -250,16 +253,14 @@ def _rs256_verify(  # pragma: no cover
     private_key_pem: str, signing_input: bytes, signature: bytes
 ) -> bool:
     try:
-        from cryptography.exceptions import InvalidSignature
         from cryptography.hazmat.primitives import hashes, serialization
-        from cryptography.hazmat.primitives.asymmetric import padding
+        from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
-        key = serialization.load_pem_private_key(
-            private_key_pem.encode("utf-8"), password=None
+        key = cast(
+            rsa.RSAPrivateKey,
+            serialization.load_pem_private_key(private_key_pem.encode("utf-8"), password=None),
         )
-        key.public_key().verify(
-            signature, signing_input, padding.PKCS1v15(), hashes.SHA256()
-        )
+        key.public_key().verify(signature, signing_input, padding.PKCS1v15(), hashes.SHA256())
         return True
     except Exception:
         return False

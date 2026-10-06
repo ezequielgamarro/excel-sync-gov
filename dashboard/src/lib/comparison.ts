@@ -11,12 +11,7 @@ import type { Kpi } from "../types";
 
 export type ComparisonPeriod = "ayer" | "semana" | "mes" | "anio";
 
-export const COMPARISON_PERIODS: readonly ComparisonPeriod[] = [
-  "ayer",
-  "semana",
-  "mes",
-  "anio",
-];
+export const COMPARISON_PERIODS: readonly ComparisonPeriod[] = ["ayer", "semana", "mes", "anio"];
 
 export const COMPARISON_LABEL: Record<ComparisonPeriod, string> = {
   ayer: "Ayer",

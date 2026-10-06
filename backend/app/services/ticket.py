@@ -88,7 +88,7 @@ class WsTicketStore:
         if not ticket or not ticket.startswith(_TICKET_PREFIX):
             return None
         key = f"ws-ticket:{ticket}"
-        raw: str | None = None
+        raw: bytes | str | None = None
         if self._redis_healthy:
             try:
                 client = await self._client()

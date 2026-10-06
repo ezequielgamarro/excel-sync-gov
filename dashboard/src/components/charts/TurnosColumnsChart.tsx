@@ -76,7 +76,11 @@ export function TurnosColumnsChart({
       <h2 className="panel-title panel-title--cap mb-3">{title}</h2>
 
       {loading && data.length === 0 ? (
-        <div className="flex min-h-0 flex-1 flex-col gap-3" role="status" aria-label={`Cargando ${title}…`}>
+        <div
+          className="flex min-h-0 flex-1 flex-col gap-3"
+          role="status"
+          aria-label={`Cargando ${title}…`}
+        >
           <Skeleton className="h-4 w-1/2" />
           <Skeleton className="h-3/4 w-full" />
         </div>

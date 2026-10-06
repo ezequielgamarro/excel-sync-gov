@@ -65,7 +65,7 @@ def _install_stubs() -> None:
         ("app.services", _BACKEND / "app" / "services"),
     ):
         pkg = types.ModuleType(name)
-        pkg.__path__ = [str(path)]  # type: ignore[attr-defined]
+        pkg.__path__ = [str(path)]
         sys.modules.setdefault(name, pkg)
 
     config_mod = types.ModuleType("app.config")
@@ -125,7 +125,7 @@ def _load_replay() -> types.ModuleType:
         assert spec is not None and spec.loader is not None
         module = importlib.util.module_from_spec(spec)
         sys.modules["app.services.replay"] = module
-        getattr(spec.loader, "exec_module")(module)
+        spec.loader.exec_module(module)
         return module
 
 
@@ -136,8 +136,8 @@ audit = sys.modules["app.services.audit"]
 def _guard_with_fake_redis() -> tuple[Any, _FakeRedis]:
     guard = replay.ReplayGuard(_FakeSettings())
     fake = _FakeRedis()
-    guard._redis = fake  # type: ignore[attr-defined]
-    guard._redis_healthy = True  # type: ignore[attr-defined]
+    guard._redis = fake
+    guard._redis_healthy = True
     return guard, fake
 
 
@@ -176,7 +176,7 @@ def _expect_reject(callable_: Any) -> Any:
 
 def test_new_nonce_accepted_and_replay_rejected() -> None:
     guard, fake = _guard_with_fake_redis()
-    audit.calls.clear()  # type: ignore[attr-defined]
+    audit.calls.clear()
     result = _enforce(_identity(), guard)
     assert result.nonce == _NONCE
     assert fake.calls and fake.calls[0][1] is True and fake.calls[0][2] == 600
@@ -196,7 +196,7 @@ def test_same_nonce_across_webhooks_does_not_collide() -> None:
 
 def test_timestamp_out_of_window_rejected() -> None:
     guard, _ = _guard_with_fake_redis()
-    audit.calls.clear()  # type: ignore[attr-defined]
+    audit.calls.clear()
     stale = _NOW - timedelta(minutes=10)
     exc = _expect_reject(lambda: _enforce(_identity(timestamp=stale), guard))
     assert getattr(exc, "code", "") == "ANTI_REPLAY"
@@ -206,7 +206,7 @@ def test_timestamp_out_of_window_rejected() -> None:
 
 def test_memory_fallback_still_rejects_replay() -> None:
     settings = _FakeSettings()
-    settings.redis_url = ""  # type: ignore[misc]
+    settings.redis_url = ""
     guard = replay.ReplayGuard(settings)
     assert asyncio.run(guard.reserve(webhook_id=_WEBHOOK_ID, nonce=_NONCE)) is True
     assert asyncio.run(guard.reserve(webhook_id=_WEBHOOK_ID, nonce=_NONCE)) is False

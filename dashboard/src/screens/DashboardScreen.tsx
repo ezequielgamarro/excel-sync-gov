@@ -16,7 +16,6 @@ import { KPI_LABEL, KPI_ORDER } from "../types";
 import type { IncidenteFecha, Kpi, KpiKey } from "../types";
 import { Header } from "../components/Header";
 import { KpiCard } from "../components/KpiCard";
-import { ComparisonBar } from "../components/ComparisonBar";
 import { KpiSkeleton, TableSkeleton } from "../components/Skeletons";
 import {
   InvalidDataBanner,
@@ -100,11 +99,7 @@ export function DashboardScreen({ session, onLogout }: DashboardScreenProps): JS
 
   // Respaldo de agregación de CONSULTAS; la fuente primaria de Incidentes/
   // Logística/Estadísticas es `estadisticas` (ver más abajo).
-  const {
-    aggregation,
-    loading: consultasLoading,
-    error: consultasError,
-  } = useConsultas(filters);
+  const { aggregation, loading: consultasLoading, error: consultasError } = useConsultas(filters);
 
   // Datos reales de la hoja DASHBOARD_WEB (Resumen y Comparativas).
   const {
@@ -127,8 +122,7 @@ export function DashboardScreen({ session, onLogout }: DashboardScreenProps): JS
   const chartsError = estadisticasError ?? consultasError;
 
   const serieIncidentes = aSerie(estadisticas?.incidentes_por_dia);
-  const seriesTemporal =
-    serieIncidentes.length > 0 ? serieIncidentes : (aggregation?.series ?? []);
+  const seriesTemporal = serieIncidentes.length > 0 ? serieIncidentes : (aggregation?.series ?? []);
 
   const gruposUnidad = aGrupos(
     estadisticas?.intervenciones_por_unidad ?? estadisticas?.grafico_regionales,
@@ -160,8 +154,7 @@ export function DashboardScreen({ session, onLogout }: DashboardScreenProps): JS
   const kpisLogistica = estadisticas?.kpis;
   const vehiculosLogistica =
     aggregation?.kpis.vehiculos_secuestrados ?? kpisLogistica?.vehiculos ?? null;
-  const armasLogistica =
-    aggregation?.kpis.armas_secuestradas ?? kpisLogistica?.armas ?? null;
+  const armasLogistica = aggregation?.kpis.armas_secuestradas ?? kpisLogistica?.armas ?? null;
   const hayLogistica = vehiculosLogistica !== null || armasLogistica !== null;
 
   // KPIs SUPERIORES conectados a los TOTALES REALES de `estadisticas` (sin
@@ -174,8 +167,7 @@ export function DashboardScreen({ session, onLogout }: DashboardScreenProps): JS
       estadisticas?.totales?.aprehendidos ?? estadisticas?.kpis?.aprehendidos ?? 0,
     vehiculos_secuestrados:
       estadisticas?.totales?.vehiculos_secuestrados ?? estadisticas?.kpis?.vehiculos ?? 0,
-    armas_secuestradas:
-      estadisticas?.totales?.armas_secuestradas ?? estadisticas?.kpis?.armas ?? 0,
+    armas_secuestradas: estadisticas?.totales?.armas_secuestradas ?? estadisticas?.kpis?.armas ?? 0,
   };
 
   const kpiReal = (key: KpiKey): Kpi => ({
@@ -352,7 +344,10 @@ export function DashboardScreen({ session, onLogout }: DashboardScreenProps): JS
                   <BarrasHorizontalesChart
                     title="Vehículos Secuestrados por Regional"
                     testId="chart-logistica-vehiculos"
-                    data={estadisticas?.vehiculosPorRegional ?? estadisticas?.logistica_vehiculos_por_regional}
+                    data={
+                      estadisticas?.vehiculosPorRegional ??
+                      estadisticas?.logistica_vehiculos_por_regional
+                    }
                     loading={chartsLoading}
                     error={chartsError}
                   />
@@ -361,7 +356,9 @@ export function DashboardScreen({ session, onLogout }: DashboardScreenProps): JS
                   <BarrasHorizontalesChart
                     title="Armas Secuestradas por Regional"
                     testId="chart-logistica-armas"
-                    data={estadisticas?.armasPorRegional ?? estadisticas?.logistica_armas_por_regional}
+                    data={
+                      estadisticas?.armasPorRegional ?? estadisticas?.logistica_armas_por_regional
+                    }
                     loading={chartsLoading}
                     error={chartsError}
                   />
@@ -371,12 +368,6 @@ export function DashboardScreen({ session, onLogout }: DashboardScreenProps): JS
 
             {activeTab === "estadisticas" ? (
               <div className="flex flex-col gap-[var(--grid-gutter)]">
-                {/* Botones Ayer / Semana Anterior / Mes / Año: cambian el período
-                    global y refetchean TODOS los gráficos de este panel. */}
-                <div className="panel flex flex-wrap items-center gap-3 py-1">
-                  <ComparisonBar ariaLabel="Período del panel de estadísticas" />
-                </div>
-
                 <div className="grid grid-cols-1 gap-[var(--grid-gutter)] xl:grid-cols-2 2xl:grid-cols-3">
                   <div className="min-w-0" style={{ height: CHART_HEIGHT }}>
                     <EvolucionDiariaChart
@@ -455,8 +446,12 @@ export function DashboardScreen({ session, onLogout }: DashboardScreenProps): JS
                 {estadisticasFase === "cargando" ? (
                   <TableSkeleton />
                 ) : estadisticasFase === "error" ? (
-                  <p role="alert" className="panel flex h-full items-center justify-center text-sm text-neg">
-                    No se pudieron cargar las comparativas. {estadisticasError ?? "Error desconocido."}
+                  <p
+                    role="alert"
+                    className="panel flex h-full items-center justify-center text-sm text-neg"
+                  >
+                    No se pudieron cargar las comparativas.{" "}
+                    {estadisticasError ?? "Error desconocido."}
                   </p>
                 ) : gruposComparativas.length > 0 ? (
                   <TurnosColumnsChart
@@ -466,7 +461,10 @@ export function DashboardScreen({ session, onLogout }: DashboardScreenProps): JS
                     groups={gruposComparativas}
                   />
                 ) : (
-                  <p role="status" className="panel flex h-full items-center justify-center text-sm text-muted">
+                  <p
+                    role="status"
+                    className="panel flex h-full items-center justify-center text-sm text-muted"
+                  >
                     SIN DATOS
                   </p>
                 )}

@@ -46,7 +46,9 @@ describe("EstadisticasKpis", () => {
   });
 
   it("cae a `kpis` cuando `totales` no trae una clave", () => {
-    render(<EstadisticasKpis totales={{ total_consultas: 50 } as EstadisticasTotales} kpis={KPIS} />);
+    render(
+      <EstadisticasKpis totales={{ total_consultas: 50 } as EstadisticasTotales} kpis={KPIS} />,
+    );
 
     expect(kpiCard("total-consultas")).toHaveTextContent("50");
     expect(kpiCard("aprehendidos")).toHaveTextContent("5");

@@ -11,7 +11,9 @@ export function ComparisonBar({ ariaLabel = "Comparar versus" }: ComparisonBarPr
   const { period, setPeriod } = useComparison();
   return (
     <div className="flex items-center gap-2" role="radiogroup" aria-label={ariaLabel}>
-      <span className="whitespace-nowrap text-[11px] uppercase tracking-wide text-muted">Comparar vs:</span>
+      <span className="whitespace-nowrap text-[11px] uppercase tracking-wide text-muted">
+        Comparar vs:
+      </span>
       <div className="flex flex-wrap gap-1">
         {COMPARISON_PERIODS.map((option) => {
           const selected = option === period;

@@ -22,6 +22,7 @@ lógica: ``estado='deshabilitado'``). Las contraseñas nunca se almacenan en cla
 
 Idempotente: ``CREATE TABLE/INDEX IF NOT EXISTS``; down con ``IF EXISTS``.
 """
+
 from typing import Sequence, Union
 
 from alembic import op
@@ -47,7 +48,8 @@ _USER_ACCOUNT = (
     CONSTRAINT uq_user_account_sub UNIQUE (sub),
     CONSTRAINT ck_user_account_estado CHECK (estado IN ('activo', 'deshabilitado'))
 )""",
-    "CREATE UNIQUE INDEX IF NOT EXISTS ux_user_account_username_lower ON app.user_account (lower(username))",
+    "CREATE UNIQUE INDEX IF NOT EXISTS ux_user_account_username_lower "
+    "ON app.user_account (lower(username))",
 )
 
 _USER_ROLE = """

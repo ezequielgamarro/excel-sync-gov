@@ -7,11 +7,7 @@
  */
 
 import { config } from "../config";
-import type {
-  ConsultaAggregation,
-  EstadisticasRespuesta,
-  HospitalesEstadisticas,
-} from "../types";
+import type { ConsultaAggregation, EstadisticasRespuesta, HospitalesEstadisticas } from "../types";
 import {
   ensureFreshToken,
   getAccessToken,

@@ -87,14 +87,14 @@ export function HospitalKpiCard({ kpi }: HospitalKpiCardProps): JSX.Element {
     >
       <header className="flex items-start gap-2">
         <HospitalKpiIcon kpiKey={kpi.key} />
-        <span
-          className="label-eyebrow min-w-0 break-words text-xs leading-tight"
-          title={kpi.label}
-        >
+        <span className="label-eyebrow min-w-0 break-words text-xs leading-tight" title={kpi.label}>
           {kpi.label}
         </span>
       </header>
-      <span className="kpi-value text-[36px] font-semibold leading-[1.02] text-ink" aria-hidden="true">
+      <span
+        className="kpi-value text-[36px] font-semibold leading-[1.02] text-ink"
+        aria-hidden="true"
+      >
         {formatInteger(kpi.value)}
       </span>
       <span className="text-[11px] uppercase tracking-wide text-muted">

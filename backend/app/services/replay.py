@@ -55,12 +55,17 @@ class ReplayIdentity(Protocol):
     """Contrato estructural mínimo que reutiliza ``WebhookIdentity`` (T23).
 
     Evita un import circular ``auth`` ↔ ``replay``: ``replay`` no conoce el tipo
-    concreto, solo los tres campos verificados que necesita.
+    concreto, solo los tres campos verificados que necesitan leerse.
     """
 
-    webhook_id: str
-    nonce: str
-    timestamp: datetime
+    @property
+    def webhook_id(self) -> str: ...
+
+    @property
+    def nonce(self) -> str: ...
+
+    @property
+    def timestamp(self) -> datetime: ...
 
 
 @dataclass(frozen=True)
@@ -127,9 +132,7 @@ class ReplayGuard:
                 self._redis_healthy = False
                 self._retry_redis_at = time.monotonic() + 30.0
         elif (
-            self._redis_url
-            and not self._redis_healthy
-            and time.monotonic() >= self._retry_redis_at
+            self._redis_url and not self._redis_healthy and time.monotonic() >= self._retry_redis_at
         ):
             # Reintenta Redis de forma periódica tras un fallo.
             self._redis_healthy = True
@@ -230,9 +233,7 @@ async def _reject(
     session: object | None,
 ) -> NoReturn:
     """Audita el intento y responde ``409`` (``ANTI_REPLAY``)."""
-    await _audit_rejection(
-        webhook_id=webhook_id, reason=reason, request=request, session=session
-    )
+    await _audit_rejection(webhook_id=webhook_id, reason=reason, request=request, session=session)
     raise_http_error(ANTI_REPLAY_CODE, message)
 
 
@@ -275,9 +276,7 @@ async def enforce_replay(
 
     # 6. Nonce no visto en la ventana de replay (cache 600 s) → 409.
     active_guard = guard if guard is not None else get_replay_guard()
-    if not await active_guard.reserve(
-        webhook_id=identity.webhook_id, nonce=identity.nonce
-    ):
+    if not await active_guard.reserve(webhook_id=identity.webhook_id, nonce=identity.nonce):
         await _reject(
             webhook_id=identity.webhook_id,
             reason=REASON_NONCE_REPLAY,

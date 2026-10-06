@@ -41,6 +41,7 @@ sobre ``ts``. Reutiliza ``app.create_month_partition``.
 Idempotente: up con ``IF NOT EXISTS`` / ``OR REPLACE``; down con ``IF EXISTS``
 + ``CASCADE``.
 """
+
 from typing import Sequence, Union
 
 from alembic import op
@@ -79,7 +80,8 @@ SELECT app.create_month_partitions(
 
 _INDEXES = (
     "CREATE UNIQUE INDEX IF NOT EXISTS uq_audit_event_id ON audit.audit_event (id, ts)",
-    "CREATE INDEX IF NOT EXISTS ix_audit_event_ts_actor_action ON audit.audit_event (ts, actor, action)",
+    "CREATE INDEX IF NOT EXISTS ix_audit_event_ts_actor_action "
+    "ON audit.audit_event (ts, actor, action)",
     "CREATE INDEX IF NOT EXISTS ix_audit_event_correlation ON audit.audit_event (correlation_id)",
 )
 

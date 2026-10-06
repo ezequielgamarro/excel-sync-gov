@@ -60,10 +60,10 @@ class _Col:
     def __eq__(self, other: Any) -> object:  # type: ignore[override]
         return object()
 
-    def __ge__(self, other: Any) -> object:  # type: ignore[override]
+    def __ge__(self, other: Any) -> object:
         return object()
 
-    def __le__(self, other: Any) -> object:  # type: ignore[override]
+    def __le__(self, other: Any) -> object:
         return object()
 
     def in_(self, other: Any) -> object:
@@ -178,7 +178,7 @@ def _install_stubs() -> None:
         ("app.api", _BACKEND / "app" / "api"),
     ):
         pkg = types.ModuleType(name)
-        pkg.__path__ = [str(path)]  # type: ignore[attr-defined]
+        pkg.__path__ = [str(path)]
         sys.modules.setdefault(name, pkg)
 
     fastapi_mod = types.ModuleType("fastapi")
@@ -245,25 +245,25 @@ def _install_stubs() -> None:
     sys.modules["app.config"] = config_mod
 
     tables_mod = types.ModuleType("app.models.tables")
-    tables_mod.KPIS = (
+    tables_mod.KPIS = (  # type: ignore[attr-defined]
         "total_consultas_sifcop",
         "personas_capturadas",
         "vehiculos_secuestrados",
         "armas_secuestradas",
     )
-    tables_mod.REGIONAL_UNITS = ("capital", "sur", "este", "oeste", "norte")
-    tables_mod.TURNOS = ("MAÑANA", "TARDE", "NOCHE")
-    tables_mod.snapshot_current = _Table(
+    tables_mod.REGIONAL_UNITS = ("capital", "sur", "este", "oeste", "norte")  # type: ignore[attr-defined]
+    tables_mod.TURNOS = ("MAÑANA", "TARDE", "NOCHE")  # type: ignore[attr-defined]
+    tables_mod.snapshot_current = _Table(  # type: ignore[attr-defined]
         "snapshot_current",
         ("doc_id", "event_id", "agent_id", "payload", "data_date", "seq", "updated_at"),
     )
-    tables_mod.agg_hourly = _Table(
+    tables_mod.agg_hourly = _Table(  # type: ignore[attr-defined]
         "agg_hourly", ("bucket", "kpi_id", "unidad_id", "turno_id", "value", "baseline_value")
     )
-    tables_mod.agg_daily = _Table(
+    tables_mod.agg_daily = _Table(  # type: ignore[attr-defined]
         "agg_daily", ("bucket", "kpi_id", "unidad_id", "turno_id", "value", "baseline_value")
     )
-    tables_mod.consulta_event = _Table(
+    tables_mod.consulta_event = _Table(  # type: ignore[attr-defined]
         "consulta_event",
         (
             "event_id",
@@ -294,7 +294,7 @@ def _install_stubs() -> None:
             "operativos_preventivos",
         ),
     )
-    tables_mod.audit_event = _Table(
+    tables_mod.audit_event = _Table(  # type: ignore[attr-defined]
         "audit_event",
         (
             "id",
@@ -341,7 +341,7 @@ def _install_stubs() -> None:
     class _Operator:
         def __init__(self, sub: str, caps: set[str]) -> None:
             self.sub = sub
-            self.roles = frozenset()
+            self.roles: frozenset[str] = frozenset()
             self.capabilities = frozenset(caps)
 
         def has_capacity(self, capability: str) -> bool:
@@ -370,7 +370,7 @@ def _load(name: str, path: Path) -> types.ModuleType:
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules[name] = module
-    getattr(spec.loader, "exec_module")(module)
+    spec.loader.exec_module(module)
     return module
 
 

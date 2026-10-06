@@ -213,16 +213,15 @@ async def get_hospitales_estadisticas() -> JSONResponse:
     by_name = {_normalize(column): column for column in columns}
     kpis: dict[str, int] = {}
     for key in KEY_COLUMNS:
-        column = by_name.get(key)
-        if column is None:
-            column = next((c for c in columns[1:] if key in _normalize(c)), None)
-        kpis[key.replace(" ", "_")] = int(table[column].sum()) if column else 0
+        matched_column = by_name.get(key)
+        if matched_column is None:
+            matched_column = next((c for c in columns[1:] if key in _normalize(c)), None)
+        kpis[key.replace(" ", "_")] = int(table[matched_column].sum()) if matched_column else 0
 
     # Serie para el gráfico: una entrada por columna numérica (todas menos la 1ª),
     # sumando solo filas de datos, NaN/vacíos → 0, y filtrando las que queden en 0.
-    chart_data = [
-        {"causa": column, "cantidad": int(table[column].sum())}
-        for column in columns[1:]
+    chart_data: list[dict[str, Any]] = [
+        {"causa": column, "cantidad": int(table[column].sum())} for column in columns[1:]
     ]
     chart_data = sorted(
         (item for item in chart_data if item["cantidad"] > 0),

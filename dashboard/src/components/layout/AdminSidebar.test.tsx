@@ -48,9 +48,7 @@ describe("AdminSidebar responsivo", () => {
   it("en móvil abierto: muestra overlay y cierra con Escape o clic en overlay", () => {
     vi.stubGlobal("matchMedia", matchMediaStub(false));
     const onClose = vi.fn();
-    render(
-      <AdminSidebar activeTab="resumen" onSelect={() => {}} open onClose={onClose} />,
-    );
+    render(<AdminSidebar activeTab="resumen" onSelect={() => {}} open onClose={onClose} />);
 
     expect(document.getElementById("admin-sidebar")).toHaveAttribute("aria-hidden", "false");
     fireEvent.click(screen.getByTestId("sidebar-overlay"));
@@ -67,8 +65,9 @@ describe("AdminSidebar responsivo", () => {
     vi.stubGlobal("matchMedia", matchMediaStub(true));
     render(<AdminSidebar activeTab="hospitales" onSelect={() => {}} />);
 
-    expect(
-      screen.getByRole("button", { name: /ingresos hospitalarios/i }),
-    ).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("button", { name: /ingresos hospitalarios/i })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 });

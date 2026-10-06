@@ -9,7 +9,12 @@ import { render, screen, within } from "@testing-library/react";
 import { RankingTable } from "./RankingTable";
 import type { RankingItem } from "../types";
 
-function dep(index: number, intervenciones: number, comisaria: string, variacionAbs = 0): RankingItem {
+function dep(
+  index: number,
+  intervenciones: number,
+  comisaria: string,
+  variacionAbs = 0,
+): RankingItem {
   return {
     puesto: index,
     dependencia_id: `d-${index}`,
@@ -37,9 +42,13 @@ describe("RankingTable (RF-04, T66)", () => {
         : a.comisaria.localeCompare(b.comisaria, "es"),
     );
 
-    render(<RankingTable dependencias={items.slice(0, 5).map((d, i) => ({ ...d, puesto: i + 1 }))} />);
+    render(
+      <RankingTable dependencias={items.slice(0, 5).map((d, i) => ({ ...d, puesto: i + 1 }))} />,
+    );
     const table = screen.getByRole("table");
-    const headers = within(table).getAllByRole("columnheader").map((h) => h.textContent);
+    const headers = within(table)
+      .getAllByRole("columnheader")
+      .map((h) => h.textContent);
     expect(headers).toEqual(["Posición", "Comisaría", "Intervenciones", "Variación"]);
     // 1 encabezado + 5 filas.
     expect(within(table).getAllByRole("row")).toHaveLength(6);

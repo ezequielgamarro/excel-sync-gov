@@ -22,9 +22,7 @@ function deriveWsUrl(apiBase: string): string {
   }
 }
 
-const API_BASE_URL = trimTrailingSlash(
-  import.meta.env.VITE_API_BASE_URL || "/api/v1",
-);
+const API_BASE_URL = trimTrailingSlash(import.meta.env.VITE_API_BASE_URL || "/api/v1");
 
 export interface AppConfig {
   apiBaseUrl: string;

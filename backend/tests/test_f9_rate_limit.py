@@ -89,7 +89,7 @@ def _install_stubs() -> None:
         ("app.services", _BACKEND / "app" / "services"),
     ):
         pkg = types.ModuleType(name)
-        pkg.__path__ = [str(path)]  # type: ignore[attr-defined]
+        pkg.__path__ = [str(path)]
         sys.modules.setdefault(name, pkg)
 
     redis_mod = types.ModuleType("redis")
@@ -150,7 +150,7 @@ def _load() -> types.ModuleType:
         assert spec is not None and spec.loader is not None
         module = importlib.util.module_from_spec(spec)
         sys.modules["app.core.rate_limit"] = module
-        getattr(spec.loader, "exec_module")(module)
+        spec.loader.exec_module(module)
         return module
 
 
@@ -171,9 +171,7 @@ def test_memory_bucket_exhausts_burst() -> None:
             bucket.consume("k", capacity=3.0, refill_per_sec=0.0, now=1000.0, ttl=60)
         )
         assert allowed is True
-    allowed, retry = _run(
-        bucket.consume("k", capacity=3.0, refill_per_sec=0.0, now=1000.0, ttl=60)
-    )
+    allowed, retry = _run(bucket.consume("k", capacity=3.0, refill_per_sec=0.0, now=1000.0, ttl=60))
     assert allowed is False
     assert retry > 0
 
@@ -208,15 +206,27 @@ def test_classify_buckets() -> None:
     policy, key = middleware._classify(webhook_scope, webhook_scope["path"])
     assert policy is not None and policy.bucket == "webhook" and key == "wh-abc"
 
-    admin_scope = {"type": "http", "path": "/api/v1/admin/users", "headers": [], "client": ("10.0.0.5", 1)}
+    admin_scope = {
+        "type": "http",
+        "path": "/api/v1/admin/users",
+        "headers": [],
+        "client": ("10.0.0.5", 1),
+    }
     policy, key = middleware._classify(admin_scope, admin_scope["path"])
     assert policy is not None and policy.bucket == "admin" and key == "10.0.0.5"
 
-    rest_scope = {"type": "http", "path": "/api/v1/dashboard/snapshot", "headers": [], "client": ("10.0.0.6", 1)}
+    rest_scope = {
+        "type": "http",
+        "path": "/api/v1/dashboard/snapshot",
+        "headers": [],
+        "client": ("10.0.0.6", 1),
+    }
     policy, key = middleware._classify(rest_scope, rest_scope["path"])
     assert policy is not None and policy.bucket == "operator" and key == "10.0.0.6"
 
-    assert middleware._classify({"type": "http", "path": "/health/live", "headers": [], "client": None}, "/health/live") == (None, None)
+    assert middleware._classify(
+        {"type": "http", "path": "/health/live", "headers": [], "client": None}, "/health/live"
+    ) == (None, None)
 
 
 def test_middleware_returns_429_with_retry_after() -> None:

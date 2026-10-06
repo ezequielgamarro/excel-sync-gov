@@ -83,7 +83,12 @@ export function RegionalesBarChart({
                   <stop offset="100%" stopColor="#4CC2FF" />
                 </linearGradient>
               </defs>
-              <CartesianGrid horizontal={false} vertical stroke="var(--border)" strokeDasharray="2 6" />
+              <CartesianGrid
+                horizontal={false}
+                vertical
+                stroke="var(--border)"
+                strokeDasharray="2 6"
+              />
               <XAxis
                 type="number"
                 allowDecimals={false}

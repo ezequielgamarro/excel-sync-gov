@@ -176,7 +176,9 @@ async def _fetch_registry(session: AsyncSession, webhook_uuid: uuid.UUID) -> Any
     ).first()
 
 
-async def _fetch_active_key_ids(session: AsyncSession, webhook_uuid: uuid.UUID, momento: datetime) -> list[str]:
+async def _fetch_active_key_ids(
+    session: AsyncSession, webhook_uuid: uuid.UUID, momento: datetime
+) -> list[str]:
     rows = (
         await session.execute(
             select(webhook_secret.c.key_id).where(

@@ -85,9 +85,7 @@ function toSession(tokens: TokenResponse, previousRefresh: string | null): AuthS
   const embeddedCaps = Array.isArray(claims.capabilities)
     ? (claims.capabilities as unknown[]).map(String)
     : [];
-  const embeddedRoles = Array.isArray(claims.roles)
-    ? (claims.roles as unknown[]).map(String)
-    : [];
+  const embeddedRoles = Array.isArray(claims.roles) ? (claims.roles as unknown[]).map(String) : [];
   const expiresIn = typeof tokens.expires_in === "number" ? tokens.expires_in : 900;
   return {
     sub: String(tokens.sub ?? claims.sub ?? ""),

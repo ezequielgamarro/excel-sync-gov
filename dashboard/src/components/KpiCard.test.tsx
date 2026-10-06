@@ -47,7 +47,12 @@ describe("KpiCard (RF-02, T66)", () => {
     render(
       <KpiCard
         kpiKey="armas_secuestradas"
-        kpi={makeKpi({ delta_abs: null, delta_pct: null, has_reference: false, label: "Armas Secuestradas" })}
+        kpi={makeKpi({
+          delta_abs: null,
+          delta_pct: null,
+          has_reference: false,
+          label: "Armas Secuestradas",
+        })}
       />,
     );
     expect(screen.getByText("— sin período anterior")).toBeInTheDocument();

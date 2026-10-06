@@ -20,6 +20,7 @@ import copy
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -39,14 +40,15 @@ from app.services.validation import (  # noqa: E402
 )
 
 
-def _example_message() -> dict:
+def _example_message() -> dict[str, Any]:
     with (_REPO / "contracts" / "messages" / "1.0.0.example.json").open(
         "r", encoding="utf-8"
     ) as fh:
-        return json.load(fh)
+        data: dict[str, Any] = json.load(fh)
+        return data
 
 
-def _ingest_body() -> dict:
+def _ingest_body() -> dict[str, Any]:
     """Cuerpo de ingesta §10.1 derivado del ejemplo del mensaje WSS."""
     message = _example_message()
     return {
@@ -166,7 +168,7 @@ def test_unsupported_type_rejected_400() -> None:
 # =============================================================================
 # Sincronización del modelo de datos: hoja «CONSULTAS» (20 columnas)
 # =============================================================================
-def _consulta_row() -> dict:
+def _consulta_row() -> dict[str, Any]:
     return {
         "fecha_consulta": "2026-10-05",
         "hora_consulta": "08:15",

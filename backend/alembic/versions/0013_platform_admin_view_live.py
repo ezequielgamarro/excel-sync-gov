@@ -4,6 +4,7 @@ Revision ID: 0013_platform_admin_view_live
 Revises: 0012_local_auth
 Create Date: 2026-10-04
 """
+
 from typing import Sequence, Union
 
 from alembic import op

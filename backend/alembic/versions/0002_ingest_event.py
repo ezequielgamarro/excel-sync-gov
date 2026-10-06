@@ -31,6 +31,7 @@ Decisiones de diseño (spec §7.9, §2.2.4, RNF-02.a, RNF-11.a):
 Idempotente: up con ``IF NOT EXISTS`` / ``OR REPLACE``; down con ``IF EXISTS``
 y ``CASCADE`` (necesario para soltar las particiones hijas).
 """
+
 from typing import Sequence, Union
 
 from alembic import op
@@ -144,8 +145,10 @@ SELECT app.create_month_partitions(
 """
 
 _INDEXES = (
-    "CREATE UNIQUE INDEX IF NOT EXISTS uq_ingest_event_event_id ON app.ingest_event (event_id, received_at)",
-    "CREATE INDEX IF NOT EXISTS ix_ingest_event_webhook_received ON app.ingest_event (webhook_id, received_at)",
+    "CREATE UNIQUE INDEX IF NOT EXISTS uq_ingest_event_event_id "
+    "ON app.ingest_event (event_id, received_at)",
+    "CREATE INDEX IF NOT EXISTS ix_ingest_event_webhook_received "
+    "ON app.ingest_event (webhook_id, received_at)",
     "CREATE INDEX IF NOT EXISTS ix_ingest_event_correlation ON app.ingest_event (correlation_id)",
 )
 
@@ -198,7 +201,5 @@ def downgrade() -> None:
     op.execute("DROP TABLE IF EXISTS app.ingest_event CASCADE")
 
     # Utilidades de particionado (orden inverso: primero la que depende).
-    op.execute(
-        "DROP FUNCTION IF EXISTS app.create_month_partitions(text, text, text, date, date)"
-    )
+    op.execute("DROP FUNCTION IF EXISTS app.create_month_partitions(text, text, text, date, date)")
     op.execute("DROP FUNCTION IF EXISTS app.create_month_partition(text, text, date, text)")

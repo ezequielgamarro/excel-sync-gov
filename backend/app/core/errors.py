@@ -149,9 +149,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         return _json_error(422, "VALIDATION_ERROR", "La petición no cumple el esquema esperado.")
 
     @app.exception_handler(StarletteHTTPException)
-    async def http_error_handler(
-        request: Request, exc: StarletteHTTPException
-    ) -> JSONResponse:
+    async def http_error_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
         code = _code_for_status(exc.status_code)
         # Los 5xx nunca exponen ``detail`` (puede contener detalles internos);
         # el resto usa el ``detail`` controlado o un mensaje genérico.

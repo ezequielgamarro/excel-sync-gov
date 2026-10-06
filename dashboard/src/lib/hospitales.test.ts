@@ -7,11 +7,7 @@
 
 import { describe, expect, it } from "vitest";
 import type { HospitalesEstadisticas } from "../types";
-import {
-  computeHospitalKpis,
-  normalizeColumnName,
-  numericValue,
-} from "./hospitales";
+import { computeHospitalKpis, normalizeColumnName, numericValue } from "./hospitales";
 
 function sample(): HospitalesEstadisticas {
   return {
@@ -108,9 +104,7 @@ describe("computeHospitalKpis", () => {
         { Localidad: "Totales", Homicidios: 6, "Lesiones Culposas": 8 },
       ],
     };
-    const byKey = Object.fromEntries(
-      computeHospitalKpis(withTotal).map((kpi) => [kpi.key, kpi]),
-    );
+    const byKey = Object.fromEntries(computeHospitalKpis(withTotal).map((kpi) => [kpi.key, kpi]));
     expect(byKey.homicidios.value).toBe(6);
     expect(byKey.lesiones_culposas.value).toBe(8);
   });

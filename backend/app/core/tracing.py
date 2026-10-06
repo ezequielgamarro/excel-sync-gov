@@ -51,8 +51,14 @@ try:  # pragma: no cover - depende del entorno
     from opentelemetry import trace as _otel_trace
     from opentelemetry.trace import (
         NonRecordingSpan as _OtelNonRecordingSpan,
+    )
+    from opentelemetry.trace import (
         SpanContext as _OtelSpanContext,
+    )
+    from opentelemetry.trace import (
         TraceFlags as _OtelTraceFlags,
+    )
+    from opentelemetry.trace import (
         set_span_in_context as _otel_set_span_in_context,
     )
 
@@ -81,7 +87,9 @@ def _get_tracer() -> object | None:
     return _tracer
 
 
-def configure_tracing(service_name: str, exporter_endpoint: str = "", *, insecure: bool = False) -> bool:
+def configure_tracing(
+    service_name: str, exporter_endpoint: str = "", *, insecure: bool = False
+) -> bool:
     """Configura el ``TracerProvider`` OTLP si el SDK está instalado.
 
     Devuelve ``True`` si se instaló un proveedor. Es *best-effort*: cualquier
@@ -100,7 +108,7 @@ def configure_tracing(service_name: str, exporter_endpoint: str = "", *, insecur
         provider = TracerProvider(resource=Resource.create({"service.name": service_name}))
         exporter = _build_exporter(exporter_endpoint, insecure=insecure)
         if exporter is not None:
-            provider.add_span_processor(BatchSpanProcessor(exporter))
+            provider.add_span_processor(BatchSpanProcessor(exporter))  # type: ignore[arg-type]
         _otel_trace.set_tracer_provider(provider)
         global _tracer
         _tracer = _otel_trace.get_tracer(service_name)
@@ -168,7 +176,9 @@ def get_span_id() -> str:
     return span_id_var.get()
 
 
-def _start_otel_span(trace_id: str, parent_span_id: str, name: str) -> tuple[object | None, object | None]:
+def _start_otel_span(
+    trace_id: str, parent_span_id: str, name: str
+) -> tuple[object | None, object | None]:
     """Abre un span OTel anclado al contexto W3C entrante (o ``(None, None)``)."""
     if not _HAS_OTEL:  # pragma: no cover - sin SDK
         return None, None
@@ -180,7 +190,7 @@ def _start_otel_span(trace_id: str, parent_span_id: str, name: str) -> tuple[obj
             trace_id=int(trace_id, 16),
             span_id=int(parent_span_id, 16),
             is_remote=True,
-            trace_flags=_OtelTraceFlags.SAMPLED,
+            trace_flags=_OtelTraceFlags.SAMPLED,  # type: ignore[arg-type]
         )
         context = _otel_set_span_in_context(_OtelNonRecordingSpan(parent))
         span = tracer.start_span(name, context=context)  # type: ignore[attr-defined]
@@ -231,9 +241,9 @@ class TracingMiddleware:
         finally:
             if span is not None:
                 try:  # pragma: no cover - depende del entorno
-                    span.set_attribute("http.route", path)
-                    span.set_attribute("correlation_id", get_correlation_id())
-                    span.end()
+                    span.set_attribute("http.route", path)  # type: ignore[attr-defined]
+                    span.set_attribute("correlation_id", get_correlation_id())  # type: ignore[attr-defined]
+                    span.end()  # type: ignore[attr-defined]
                 except Exception:
                     pass
             span_id_var.reset(token_span)
