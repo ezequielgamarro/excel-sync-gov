@@ -1,0 +1,74 @@
+# =============================================================================
+# Gitleaks configuration — "Excel-to-Web" (SPEC-001)
+#
+# Propósito (RNF-13.d, spec §9.5): bloquear el merge ante secretos plausibles.
+#   - Extiende las reglas por defecto de gitleaks (API keys, tokens,
+#     certificados, claves privadas PEM, etc.).
+#   - Allowlist global: excluye documentación (specs), ejemplos de contrato
+#     (`*.example.json`) y plantillas de entorno (`.env.example`), que contienen
+#     placeholders/ejemplos y no secretos reales.
+#   - Reglas custom para patrones propios del sistema: `X-Key-Id`, prefijos de
+#     API Key y cadenas base64 con prefijo `sk_`/`ak_`/`pk_`.
+# =============================================================================
+
+title = "excel-sync-gov secret scanning (RNF-13.d)"
+
+# Extender las reglas por defecto de gitleaks (140+ reglas). Los arrays de la
+# allowlist se ANEXAN a los de la configuración por defecto (no los reemplazan),
+# de modo que se conservan exclusiones estándar (node_modules, lockfiles, etc.).
+[extend]
+useDefault = true
+
+# ---------------------------------------------------------------------------
+# Allowlist global — documentación y datos de ejemplo (no contienen secretos).
+# Ver contracts/README.md regla de oro #2 y spec §9.5.
+# ---------------------------------------------------------------------------
+[allowlist]
+description = "Docs de spec y ejemplos de contrato (RNF-13.d, §9.5)"
+regexTarget = "match"
+paths = [
+    # Documentación de especificación (contiene ejemplos de headers/secretos).
+    '''(?i)(?:^|/)specs(?:/.*)?$''',
+    # Ejemplos de contrato (datos de ejemplo válidos, no secretos reales).
+    # Cualquier `*.example.json` (p. ej. `contracts/messages/*.example.json`).
+    '''(?i)\.example\.json$''',
+    # Plantillas de entorno: solo NOMBRES de variables, sin valores reales.
+    # Cubre `.env.example` en cualquier nivel (raíz, `backend/`, etc.).
+    '''(?i)(?:^|/)\.env\.example$''',
+    # Ficheros de configuración de gitleaks (no deben escanearse a sí mismos).
+    '''(?:^|/)(?:\.)?gitleaks\.toml$''',
+]
+
+# ---------------------------------------------------------------------------
+# Reglas custom — patrones propios del sistema (§2.2.1, §9.5, §10.1).
+# ---------------------------------------------------------------------------
+
+# 1) X-Key-Id — identificador de la clave de datos AES-256 usada en el sobre de
+#    ingesta (`X-Key-Id: dk-YYYY-MM`). Si aparece hardcodeado con valor, se
+#    marca como hallazgo (en docs está excluido por la allowlist global).
+[[rules]]
+id = "gov-x-key-id"
+description = "Detecta el header/campo X-Key-Id con un identificador de clave de datos potencialmente hardcodeado."
+regex = '''(?i)\bX-Key-Id\b[ \t]*[:=][ \t]*["']?[A-Za-z0-9][A-Za-z0-9_.-]{2,64}["']?'''
+keywords = ["x-key-id", "x_key_id"]
+entropy = 2.0
+tags = ["gov", "x-key-id", "key-id"]
+
+# 2) API Key propia del agente — asignación (`api_key` / `agent_key`) con un
+#    valor plausible de 20+ caracteres.
+[[rules]]
+id = "gov-agent-api-key"
+description = "Detecta una API Key de agente (asignación api_key/agent_key con valor plausible de 20+ caracteres)."
+regex = '''(?i)\b(?:api[_-]?key|agent[_-]?key|apikey)\b[ \t]*[:=][ \t]*["']?[A-Za-z0-9+/_\-]{20,}={0,3}["']?'''
+keywords = ["api_key", "api-key", "apikey", "agent_key", "agent-key"]
+entropy = 3.0
+tags = ["gov", "api-key", "agent-key"]
+
+# 3) Cadenas base64 (40+ caracteres) con prefijo sk_ / ak_ / pk_.
+[[rules]]
+id = "gov-prefixed-base64-key"
+description = "Detecta claves en base64 (40+ caracteres) con prefijo sk_, ak_ o pk_."
+regex = '''(?i)\b(?:sk|ak|pk)_[A-Za-z0-9+/]{40,}={0,3}'''
+keywords = ["sk_", "ak_", "pk_"]
+entropy = 3.5
+tags = ["gov", "prefixed-key", "base64"]

@@ -1,0 +1,504 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://api.example.gov/schema/messages/1.0.0",
+  "title": "Sobre de mensaje WSS — indicators.snapshot (v1.0.0)",
+  "description": "Contrato JSON Schema del sobre de mensaje 'indicators.snapshot' que el backend distribuye por WebSocket (WSS) al dashboard. Derivado de la spec SPEC-001 §7.2–§7.8. Política de versionado en §7.8.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "type",
+    "event_id",
+    "seq",
+    "room_id",
+    "ts",
+    "tz",
+    "data_date",
+    "source",
+    "payload",
+    "correlation_id"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0",
+      "description": "Versión semver del esquema de mensaje (§7.8). Mayor no soportada → cliente rechaza y exige recarga."
+    },
+    "type": {
+      "type": "string",
+      "enum": ["indicators.snapshot", "heartbeat", "error", "hello"],
+      "description": "Tipo de mensaje (§7.2, §10.3). Este schema describe el sobre 'indicators.snapshot'; los demás tipos se incluyen por ser el enum canónico de §7.2. La variante validada aquí es 'indicators.snapshot'."
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Identificador único del evento, UUIDv7 (§7.2, RNF-11.a). Clave de idempotencia (UNIQUE en backend)."
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Secuencia monótona creciente por room_id, asignada por el backend (§7.2, RNF-11.b). El cliente aplica solo si seq > lastSeq."
+    },
+    "room_id": {
+      "type": "string",
+      "description": "Identificador de la sala de operaciones (§7.2, RNF-10.d). Una instancia = una sala."
+    },
+    "ts": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Momento de aceptación en el backend (reloj autoritativo), ISO-8601 con timezone (§7.2)."
+    },
+    "tz": {
+      "type": "string",
+      "default": "America/Argentina/Buenos_Aires",
+      "description": "Zona horaria canónica del dato (IANA), la del SIFCOP, no la del navegador (§7.2, §13)."
+    },
+    "tz_offset_minutes": {
+      "type": "integer",
+      "description": "Offset en minutos de la zona horaria canónica respecto a UTC (§7.2). Para America/Argentina/Buenos_Aires = -180 (ART). Nota: el valor del ejemplo de §7.2 (-240) corresponde a otra zona; se recomienda derivarlo de 'tz'."
+    },
+    "data_date": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "Día de datos (YYYY-MM-DD) al que corresponde el acumulado; clave para la comparación 'vs ayer' (§7.2)."
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["webhook_id", "doc_id", "content_sha256", "sheet_modified_at"],
+      "description": "Metadatos del origen Google Sheets / Apps Script que notificó el evento (§2.2.1, §7.2).",
+      "properties": {
+        "webhook_id": {
+          "type": "string",
+          "description": "Identificador del webhook de Google Sheets (origen) registrado y activo en `webhook_registry` (§2.2.1, §9). Un documento = un webhook."
+        },
+        "doc_id": {
+          "type": "string",
+          "description": "Identificador del documento de Google Sheets de origen (p. ej. 'sifcop-resumen')."
+        },
+        "content_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{64}$",
+          "description": "Hash SHA-256 del contenido normalizado del documento (RF-01.c)."
+        },
+        "sheet_modified_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Marca de tiempo de la última modificación del documento en Google Sheets (origen)."
+        }
+      }
+    },
+    "payload": {
+      "$comment": "Estructura de §7.3 (kpis) + §7.5 (regional) + §7.4 (turnos) + §7.6 (ranking) + §7.7 (freshness, quality).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kpis", "regional", "turnos", "ranking", "freshness", "quality"],
+      "properties": {
+        "kpis": {
+          "$comment": "DECISIÓN DE NOMBRES: §7.3 usa 'delta_abs' y 'delta_pct' para la variación de los KPIs (NO 'variacion_abs'/'variacion_pct'). 'variacion_*' pertenece a regional/turnos/ranking. Se adopta el nombre de la spec (delta_*) como autoritativo.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "total_consultas_sifcop",
+            "personas_capturadas",
+            "vehiculos_secuestrados",
+            "armas_secuestradas"
+          ],
+          "description": "Los 4 KPIs (VIS-01..04), clave canónica estable (§7.3).",
+          "properties": {
+            "total_consultas_sifcop": { "$ref": "#/$defs/kpi" },
+            "personas_capturadas": { "$ref": "#/$defs/kpi" },
+            "vehiculos_secuestrados": { "$ref": "#/$defs/kpi" },
+            "armas_secuestradas": { "$ref": "#/$defs/kpi" }
+          }
+        },
+        "regional": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "description": "Serie regional con exactamente 5 unidades (VIS-05), catálogo cerrado sin repetición (§7.5).",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "unidad_id",
+              "label",
+              "intervenciones",
+              "variacion_abs",
+              "variacion_pct",
+              "rank"
+            ],
+            "properties": {
+              "unidad_id": {
+                "type": "string",
+                "enum": ["capital", "sur", "este", "oeste", "norte"],
+                "description": "Unidad regional canónica (§7.5)."
+              },
+              "label": {
+                "type": "string",
+                "description": "Etiqueta visible de la unidad (p. ej. 'Capital')."
+              },
+              "intervenciones": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Cantidad de intervenciones (entero no negativo)."
+              },
+              "variacion_abs": { "$ref": "#/$defs/variacion_abs" },
+              "variacion_pct": { "$ref": "#/$defs/variacion_pct" },
+              "rank": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5,
+                "description": "Puesto en el ranking regional, derivado del orden por intervenciones descendente (§7.5)."
+              }
+            }
+          },
+          "contains": {
+            "type": "object",
+            "properties": {
+              "unidad_id": { "const": "capital" }
+            },
+            "required": ["unidad_id"]
+          },
+          "allOf": [
+            {
+              "contains": {
+                "type": "object",
+                "properties": { "unidad_id": { "const": "sur" } },
+                "required": ["unidad_id"]
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "properties": { "unidad_id": { "const": "este" } },
+                "required": ["unidad_id"]
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "properties": { "unidad_id": { "const": "oeste" } },
+                "required": ["unidad_id"]
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "properties": { "unidad_id": { "const": "norte" } },
+                "required": ["unidad_id"]
+              }
+            }
+          ]
+        },
+        "turnos": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "Serie de 3 turnos operativos en orden cronológico fijo MAÑANA → TARDE → NOCHE (§7.4, RF-04.a).",
+          "prefixItems": [
+            {
+              "allOf": [
+                { "$ref": "#/$defs/turno" },
+                { "properties": { "turno_id": { "const": "MAÑANA" } }, "required": ["turno_id"] }
+              ]
+            },
+            {
+              "allOf": [
+                { "$ref": "#/$defs/turno" },
+                { "properties": { "turno_id": { "const": "TARDE" } }, "required": ["turno_id"] }
+              ]
+            },
+            {
+              "allOf": [
+                { "$ref": "#/$defs/turno" },
+                { "properties": { "turno_id": { "const": "NOCHE" } }, "required": ["turno_id"] }
+              ]
+            }
+          ],
+          "items": false
+        },
+        "ranking": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["top_n", "dependencias"],
+          "description": "Ranking de dependencias Top 5 (VIS-07) (§7.6).",
+          "properties": {
+            "top_n": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5,
+              "description": "Número máximo de dependencias en el ranking (5)."
+            },
+            "dependencias": {
+              "type": "array",
+              "maxItems": 5,
+              "description": "Hasta 5 dependencias ordenadas por intervenciones descendente (desempate alfabético), sin filas de relleno (§7.6, RF-04.h).",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "puesto",
+                  "dependencia_id",
+                  "comisaria",
+                  "intervenciones",
+                  "variacion_abs",
+                  "variacion_pct",
+                  "puesto_previo"
+                ],
+                "properties": {
+                  "puesto": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 5,
+                    "description": "Posición actual (1–5)."
+                  },
+                  "dependencia_id": {
+                    "type": "string",
+                    "description": "Identificador canónico de la dependencia (p. ej. 'com-12')."
+                  },
+                  "comisaria": {
+                    "type": "string",
+                    "description": "Nombre visible de la dependencia (p. ej. 'Comisaría 12')."
+                  },
+                  "intervenciones": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Cantidad de intervenciones (entero no negativo)."
+                  },
+                  "variacion_abs": { "$ref": "#/$defs/variacion_abs" },
+                  "variacion_pct": { "$ref": "#/$defs/variacion_pct" },
+                  "puesto_previo": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 5,
+                    "description": "Puesto en la instantánea anterior; habilita el destello de cambio de posición (RF-04.g)."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "consultas": {
+          "type": "array",
+          "description": "Detalle normalizado de la hoja «CONSULTAS» (20 columnas oficiales de la Jefatura). Sección opcional: alimenta las agrupaciones por Resultado, Causas Penales, Jefatura Regional y Turno.",
+          "items": { "$ref": "#/$defs/consulta" }
+        },
+        "freshness": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["last_event_ts", "stale"],
+          "description": "Frescura del dato (§7.7). 'stale' lo computa el cliente; el backend lo incluye como hint.",
+          "properties": {
+            "last_event_ts": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Marca del último evento de datos aceptado (§7.7)."
+            },
+            "sheet_modified_at": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Marca de la última modificación del documento de Google Sheets (replicada para referencia) (§7.7)."
+            },
+            "stale": {
+              "type": "boolean",
+              "description": "Hint de caducidad; la decisión final de frescura la toma el cliente con su reloj (§7.7)."
+            },
+            "age_seconds": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Edad del dato en segundos (equivalente de §7.7 'age_seconds')."
+            }
+          }
+        },
+        "quality": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["partial"],
+          "description": "Calidad/integridad de la instantánea (§7.7).",
+          "properties": {
+            "partial": {
+              "type": "boolean",
+              "description": "true si el agregado proviene de una fuente degradada (p. ej. solo 3 de 5 unidades); el cliente muestra aviso no bloqueante (§7.7)."
+            },
+            "motivo": {
+              "type": "string",
+              "description": "Motivo opcional de la degradación (equivalente semántico de §7.7 'warnings')."
+            },
+            "source_rows": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Número de filas de origen consideradas (§7.7)."
+            },
+            "warnings": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Avisos no bloqueantes sobre la calidad del dato (§7.7)."
+            }
+          }
+        }
+      }
+    },
+    "correlation_id": {
+      "type": "string",
+      "description": "Identificador de correlación extremo a extremo (RNF-07.b, RNF-08.b)."
+    }
+  },
+  "$defs": {
+    "kpi": {
+      "$comment": "§7.3. Reglas de negocio (documentadas, no impuestas por el schema): delta_abs = value − baseline_value; delta_pct = round((delta_abs/baseline_value)×100, 2); si baseline_value==0 → delta_pct=null y delta_abs=value; si no hay registro de ayer → has_reference=false y delta_abs/delta_pct=null. direction deriva de delta_abs.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "value",
+        "direction",
+        "comparison",
+        "baseline_value",
+        "as_of",
+        "has_reference"
+      ],
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Etiqueta visible del KPI (p. ej. 'Total Consultas SIFCOP'). Puede traducirse sin romper clientes."
+        },
+        "value": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Acumulado del día actual hasta as_of (entero no negativo)."
+        },
+        "delta_abs": {
+          "$ref": "#/$defs/variacion_abs_nullable",
+          "description": "Variación absoluta = value − baseline_value. null cuando no hay referencia (§7.3)."
+        },
+        "delta_pct": {
+          "$ref": "#/$defs/variacion_pct_nullable",
+          "description": "Variación porcentual con 2 decimales; null si baseline_value==0 o sin referencia (§7.3)."
+        },
+        "direction": {
+          "type": "string",
+          "enum": ["up", "down", "flat"],
+          "description": "Dirección de la variación derivada de delta_abs (§7.3)."
+        },
+        "comparison": {
+          "type": "string",
+          "const": "ayer_mismo_tramo",
+          "description": "Base de comparación 'vs ayer' (§7.3.1)."
+        },
+        "baseline_value": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Acumulado del día anterior hasta la misma hora (§7.3)."
+        },
+        "as_of": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Instante al que corresponde el acumulado del KPI (§7.3)."
+        },
+        "has_reference": {
+          "type": "boolean",
+          "description": "false si no existe registro del día anterior (§7.3)."
+        }
+      }
+    },
+    "turno": {
+      "$comment": "§7.4. El turno NOCHE cruza medianoche (fin_min < inicio_min); la fecha lógica es la fecha de inicio.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "turno_id",
+        "inicio_min",
+        "fin_min",
+        "label",
+        "intervenciones",
+        "variacion_abs",
+        "variacion_pct",
+        "estado"
+      ],
+      "properties": {
+        "turno_id": {
+          "type": "string",
+          "enum": ["MAÑANA", "TARDE", "NOCHE"],
+          "description": "Identificador canónico del turno (§7.4)."
+        },
+        "inicio_min": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1439,
+          "description": "Minuto de inicio del turno desde las 00:00 (§7.4)."
+        },
+        "fin_min": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1439,
+          "description": "Minuto de fin del turno desde las 00:00. Para NOCHE es menor que inicio_min (cruza medianoche)."
+        },
+        "label": {
+          "type": "string",
+          "description": "Etiqueta visible del turno (p. ej. 'MAÑANA (06-14)')."
+        },
+        "intervenciones": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Intervenciones del turno (entero no negativo)."
+        },
+        "variacion_abs": { "$ref": "#/$defs/variacion_abs" },
+        "variacion_pct": { "$ref": "#/$defs/variacion_pct" },
+        "estado": {
+          "type": "string",
+          "enum": ["pendiente", "en_curso", "cerrada"],
+          "description": "Estado del turno (§7.4, RF-04.b): pendiente = aún no ocurre; en_curso = contiene la hora actual; cerrada = ya pasó."
+        }
+      }
+    },
+    "variacion_abs": {
+      "type": "integer",
+      "description": "Variación absoluta con signo (entero). Obligatorio en regional/turnos/ranking."
+    },
+    "variacion_pct": {
+      "type": "number",
+      "description": "Variación porcentual, redondeada a 2 decimales (RNF-15.b; la precisión de 2 decimales es un requisito de presentación y no se fuerza con multipleOf por la precisión binaria de JSON). Obligatorio en regional/turnos/ranking."
+    },
+    "variacion_abs_nullable": {
+      "type": ["integer", "null"],
+      "description": "Variación absoluta con signo (entero) o null cuando no hay referencia (KPIs, §7.3)."
+    },
+    "variacion_pct_nullable": {
+      "type": ["number", "null"],
+      "description": "Variación porcentual, redondeada a 2 decimales, o null si baseline_value==0 o sin referencia (KPIs, §7.3)."
+    },
+    "consulta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fecha_consulta"],
+      "description": "Fila de la hoja «CONSULTAS» (20 columnas oficiales de la Jefatura).",
+      "properties": {
+        "fecha_consulta": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "description": "Fecha Consulta (ISO YYYY-MM-DD)."
+        },
+        "hora_consulta": { "type": "string", "description": "Hora Consulta." },
+        "turno": { "type": "string", "description": "Turno (MAÑANA/TARDE/NOCHE)." },
+        "jerarquia": { "type": "string", "description": "Jerarquía." },
+        "personal_policial": { "type": "string", "description": "Personal Policial." },
+        "jefatura_regional": { "type": "string", "description": "Jefatura Regional." },
+        "dependencias": { "type": "string", "description": "Dependencias." },
+        "tipo_consulta": { "type": "string", "description": "Tipo Consulta." },
+        "identificacion": { "type": "string", "description": "Identificación." },
+        "tipo_arma_vehiculo": { "type": "string", "description": "Tipo de Arma/Vehículo." },
+        "resultado": { "type": "string", "description": "Resultado." },
+        "causas_penales": { "type": "string", "description": "Causas Penales." },
+        "registro_legajo": { "type": "string", "description": "Registro/Legajo." },
+        "autoridad_judicial": { "type": "string", "description": "Autoridad Judicial." },
+        "sistema_utilizado": { "type": "string", "description": "Sistema Utilizado." },
+        "tramite_devuelto": { "type": "string", "description": "Trámite Devuelto." },
+        "hora_resp": { "type": "string", "description": "Hora Resp." },
+        "personal_que_informa": { "type": "string", "description": "Personal que Informa." },
+        "cargo": { "type": "string", "description": "Cargo." },
+        "operativos_preventivos": { "type": "string", "description": "Operativos Preventivos." }
+      }
+    }
+  }
+}

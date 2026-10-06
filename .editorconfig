@@ -1,0 +1,28 @@
+# EditorConfig — convenciones comunes del monorepo
+# https://editorconfig.org
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Python (backend) — 4 espacios
+[*.py]
+indent_style = space
+indent_size = 4
+
+# JavaScript / TypeScript (dashboard) y Google Apps Script (apps-script/) — 2 espacios
+[*.{js,jsx,ts,tsx,mjs,cjs,gs}]
+indent_style = space
+indent_size = 2
+
+# JSON / YAML / config — 2 espacios
+[*.{json,jsonc,yaml,yml,css,scss,less,html,graphql}]
+indent_style = space
+indent_size = 2
+
+# Markdown — no forzar trim (los saltos de línea dobles son intencionales)
+[*.md]
+trim_trailing_whitespace = false

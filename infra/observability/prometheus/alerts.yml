@@ -1,0 +1,93 @@
+# =============================================================================
+# infra/observability/prometheus/alerts.yml — reglas de alerta (T77, RNF-07.d).
+#
+# Reglas: p95 latencia > 2 s (10 min), tasa de rechazo > 1 %, WSS a 0 con sala
+# activa, último webhook > 5 min, payload > 64 KB, debounce SQL > 1 %, backend
+# caído y synthetic checks en rojo.
+# =============================================================================
+
+groups:
+  - name: excel-sync-gov-disponibilidad
+    interval: 30s
+    rules:
+      - alert: BackendDown
+        expr: up{job="backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backend sin métricas (réplica caída o red interna)"
+          description: "El target {{ $labels.instance }} no responde; verificar réplicas healthy."
+
+      - alert: SyntheticCheckFailing
+        expr: probe_success{job="synthetic-health"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Synthetic check en rojo: {{ $labels.instance }}"
+          description: "El sondeo por minuto no obtuvo 2xx (disponibilidad RNF-06.a)."
+
+      - alert: WssConnectionsZero
+        expr: max by (room_id) (wss_connections) == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "WSS a 0 en la sala {{ $labels.room_id }}"
+          description: "Ninguna conexión WSS activa con la sala en operación (RNF-07.d)."
+
+  - name: excel-sync-gov-rendimiento
+    interval: 30s
+    rules:
+      - alert: IngestLatencyP95High
+        expr: histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m]))) > 2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p95 de latencia > 2 s (10 min)"
+          description: "La latencia p95 supera el umbral de RNF-07.d."
+
+      - alert: RejectionRateHigh
+        expr: |
+          sum(rate(http_responses_4xx_5xx_total[5m]))
+            / clamp_min(sum(rate(http_requests_total[5m])), 1) > 0.01
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Tasa de rechazo/error > 1 % (10 min)"
+          description: "Revisar firma del webhook, esquema o rate limiting (RNF-07.d)."
+
+  - name: excel-sync-gov-origen
+    interval: 30s
+    rules:
+      - alert: WebhookStale
+        expr: |
+          (increase(ingest_events_total[5m]) == 0)
+            or (alert_active{rule=~".*webhook.*"} == 1)
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Sin webhooks hace > 5 min"
+          description: "Posible trigger perdido; la reconciliación por polling debe recuperar (RF-01.i)."
+
+      - alert: IngestPayloadTooLarge
+        expr: ingest_max_payload_bytes > 65536
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Payload de ingesta > 64 KB"
+          description: "El mayor payload supera el umbral (RNF-07.d)."
+
+      - alert: SqlDebounceHigh
+        expr: sql_debounce_ratio > 0.01
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Debounce de escritura SQL > 1 %"
+          description: "Posible contención en PostgreSQL (RNF-07.d)."

@@ -1,0 +1,40 @@
+# =============================================================================
+# infra/observability/synthetic/checks.yaml — synthetic checks por minuto (T77).
+#
+# Declaración de los sondeos sintéticos (cada 60 s). Los ejecuta:
+#   - GCP Monitoring uptime checks (`infra/terraform/observability.tf`), y
+#   - `run-synthetic-checks.sh` (runner de referencia en el CI/host).
+# En Prometheus, el job `synthetic-health` (blackbox_exporter) los evalúa 1/min.
+# =============================================================================
+
+interval_seconds: 60
+
+checks:
+  - id: api-liveness
+    description: "Liveness del backend (proceso vivo)."
+    url: "https://api.example.gov/health/live"
+    method: GET
+    expect_status: 200
+    severity: critical
+
+  - id: api-readiness
+    description: "Readiness interna (BD + Redis) — desde red interna."
+    url: "https://api.example.gov/health/ready"
+    method: GET
+    expect_status: 200
+    severity: critical
+
+  - id: cold-start
+    description: "Cold start del dashboard desde PostgreSQL (p95 <= 800 ms)."
+    url: "https://api.example.gov/dashboard/snapshot"
+    method: GET
+    expect_status: 200
+    max_latency_ms: 1500
+    severity: critical
+
+  - id: dashboard-shell
+    description: "App shell de la SPA servido por Cloudflare Pages."
+    url: "https://dashboard.example.gov/"
+    method: GET
+    expect_status: 200
+    severity: warning

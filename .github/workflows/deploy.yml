@@ -1,0 +1,227 @@
+# =============================================================================
+# .github/workflows/deploy.yml — CI/CD escalonado (Tarea T75, Fase F10).
+#
+# Orden ESTRICTO (§7.8, RNF-06):
+#   build  →  test  →  secret-scan  →  deploy-spa  →  deploy-backend  →  health-gate
+#
+# Reglas clave:
+#   - La SPA se despliega SIEMPRE ANTES que el backend: el cliente nuevo debe
+#     tolerar al backend antiguo durante la ventana de soporte de 2 minors.
+#   - El backend soporta/publica las dos últimas minors (contrato §7.8); el job
+#     `test` verifica la ventana y el job `deploy-backend` usa rolling deploy
+#     `start-first` sin corte (infra/docker/rollout.sh).
+#   - Ningún secreto se versiona: se inyectan desde el gestor de secretos del
+#     entorno `production` (RNF-13).
+#
+# Requisitos de configuración (GitHub → Environments → production):
+#   variables: HEALTH_HOST, PAGES_PROJECT_NAME, API_HOSTNAME, DASHBOARD_HOSTNAME
+#   secretos : CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, REGISTRY_*,
+#              DEPLOY_* (acceso al orquestador/secret manager)
+# =============================================================================
+
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/backend
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1) BUILD — imagen del backend (push a registry) + bundle de la SPA.
+  # ---------------------------------------------------------------------------
+  build:
+    name: Build (backend image + SPA bundle)
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Login en el registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build + push de la imagen del backend
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          file: backend/Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - id: meta
+        run: echo "image=${REGISTRY}/${IMAGE_NAME}:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+
+      - name: Build de la SPA
+        run: |
+          npm --prefix dashboard ci
+          npm --prefix dashboard run build
+        env:
+          VITE_API_BASE_URL: https://${{ vars.API_HOSTNAME }}/api/v1
+          VITE_ROOM_ID: sala-central
+
+      - name: Subir bundle de la SPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-dist
+          path: dashboard/dist
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # 2) TEST — backend, SPA y ventana de contrato (2 minors).
+  # ---------------------------------------------------------------------------
+  test:
+    name: Test (pytest + vitest + contrato)
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Dependencias del backend
+        run: |
+          pip install -r backend/requirements.txt
+          pip install pytest pytest-asyncio
+
+      - name: pytest (backend)
+        run: python -m pytest backend/tests
+
+      - name: Ventana de 2 minors del contrato (§7.8)
+        run: python scripts/check_contract_window.py
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+
+      - name: Vitest (dashboard)
+        run: |
+          npm --prefix dashboard ci
+          npm --prefix dashboard run test
+
+  # ---------------------------------------------------------------------------
+  # 3) SECRET SCAN — bloquea el despliegue ante secretos plausibles.
+  # ---------------------------------------------------------------------------
+  secret-scan:
+    name: Secret scan (gitleaks)
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+          GITLEAKS_VERSION: "8.24.2"
+
+  # ---------------------------------------------------------------------------
+  # 4) DEPLOY SPA — SIEMPRE antes que el backend (§7.8).
+  # ---------------------------------------------------------------------------
+  deploy-spa:
+    name: Deploy SPA (Cloudflare Pages) — antes que backend
+    needs: [secret-scan]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Descargar bundle verificado
+        uses: actions/download-artifact@v4
+        with:
+          name: dashboard-dist
+          path: dashboard/dist
+
+      - name: Deploy a Cloudflare Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PAGES_PROJECT_NAME: ${{ vars.PAGES_PROJECT_NAME }}
+          PAGES_BRANCH: production
+        run: |
+          npx --yes wrangler@3 pages deploy dashboard/dist \
+            --project-name "${PAGES_PROJECT_NAME}" \
+            --branch production
+
+  # ---------------------------------------------------------------------------
+  # 5) DEPLOY BACKEND — rolling deploy start-first sin corte (≥3 réplicas).
+  # ---------------------------------------------------------------------------
+  deploy-backend:
+    name: Deploy backend (rolling start-first, ≥3 réplicas)
+    needs: [build, deploy-spa]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Desplegar stack (start-first + rollback automático)
+        env:
+          BACKEND_IMAGE: ${{ needs.build.outputs.image }}
+          # Secretos inyectados en runtime desde el gestor de secretos (RNF-13).
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+          JWT_SIGNING_KEY: ${{ secrets.JWT_SIGNING_KEY }}
+          WEBHOOK_ID: ${{ secrets.WEBHOOK_ID }}
+          WEBHOOK_KEY_ID: ${{ secrets.WEBHOOK_KEY_ID }}
+          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+          KEK_ID: ${{ secrets.KEK_ID }}
+          KEK_MATERIAL: ${{ secrets.KEK_MATERIAL }}
+          DATA_KEY: ${{ secrets.DATA_KEY }}
+          KEY_ID: ${{ secrets.KEY_ID }}
+          CSRF_SECRET: ${{ secrets.CSRF_SECRET }}
+          CORS_ALLOW_ORIGINS: https://${{ vars.DASHBOARD_HOSTNAME }}
+        run: |
+          export BACKEND_IMAGE
+          chmod +x infra/docker/rollout.sh
+          infra/docker/rollout.sh
+
+  # ---------------------------------------------------------------------------
+  # 6) HEALTH GATE — puerta de salud final.
+  # ---------------------------------------------------------------------------
+  health-gate:
+    name: Health gate (liveness + readiness)
+    needs: [deploy-backend]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Sondear salud y cerrar el deploy
+        env:
+          HEALTH_HOST: ${{ vars.API_HOSTNAME }}
+          HEALTH_PATH: /health/live
+        run: |
+          chmod +x infra/ci/health-gate.sh
+          infra/ci/health-gate.sh

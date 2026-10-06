@@ -1,0 +1,203 @@
+name: CI
+
+# =============================================================================
+# Pipeline base (Fase F0, tarea T4) — lint + typecheck + secret scanning.
+#
+# Matriz de versiones (ver `strategy.matrix` de cada job):
+#   - Python (backend): 3.11, 3.12
+#   - Node   (dashboard)      : 20, 22
+#
+# Jobs:
+#   - contracts-validate    : ejemplos de contrato vs JSON Schema (T3).
+#   - python-lint-typecheck : `ruff check` + `ruff format --check` + `mypy`
+#                             sobre `backend/` (y `scripts/`).
+#   - node-lint-typecheck   : `eslint` + `prettier --check` + `tsc --noEmit`
+#                             sobre `dashboard/`.
+#   - secret-scan           : gitleaks con `.gitleaks.toml`; BLOQUEA el merge
+#                             ante secretos plausibles (RNF-13.d, §9.5).
+#
+# Los pasos de lint/typecheck son "noop tolerante": mientras no exista el código
+# correspondiente (p. ej. `dashboard/src/` aún no existe en F0), no fallan por
+# ausencia de archivos, pero dejan la estructura lista para cuando exista. En
+# cuanto aparezcan las fuentes, ejecutan las herramientas reales.
+# Nota: `apps-script/**` es Apps Script (JavaScript) y no se lintea con
+# ruff/mypy; su verificación se realiza en el editor/despliegue de Apps Script.
+#
+# El escaneo de secretos se ejecuta aquí en cada push/PR (bloquea el merge).
+# El workflow `secret-scan.yml` conserva además un escaneo programado del
+# historial completo (defensa en profundidad, RNF-13.d).
+# =============================================================================
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contracts-validate:
+    name: Validar contratos de mensajes (JSON Schema)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install jsonschema
+        run: pip install jsonschema
+
+      - name: Validar ejemplos contra schema
+        run: python scripts/validate_contract_messages.py
+
+  python-lint-typecheck:
+    name: Python lint + typecheck (py ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install tools (ruff + mypy)
+        run: |
+          python -m pip install --upgrade pip
+          # Versiones alineadas con T5 para evitar deriva del formatter/linter:
+          #   - ruff: misma revisión que .pre-commit-config.yaml (v0.9.6).
+          #   - mypy: mínimo declarado en pyproject.toml ([dependency-groups].dev).
+          pip install "ruff==0.9.6" "mypy==1.14.0"
+
+      - name: Install backend runtime deps (para los stubs de mypy)
+        run: |
+          if [ -f backend/requirements.txt ]; then
+            pip install -r backend/requirements.txt
+          else
+            echo "::notice::No hay backend/requirements.txt todavía; instalación de deps omitida (noop)."
+          fi
+
+      - name: Detectar código Python
+        id: py
+        run: |
+          if find backend scripts -name '*.py' -print -quit | grep -q .; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No hay código Python todavía; lint/mypy omitidos (noop)."
+          fi
+
+      - name: ruff check (backend + scripts)
+        if: steps.py.outputs.found == 'true'
+        run: ruff check backend scripts
+
+      - name: ruff format --check (backend + scripts)
+        if: steps.py.outputs.found == 'true'
+        run: ruff format --check backend scripts
+
+      - name: mypy (backend)
+        if: steps.py.outputs.found == 'true'
+        run: mypy backend
+
+  node-lint-typecheck:
+    name: Node lint + typecheck (node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ["20", "22"]
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node-version }}
+          # Nota: `cache: npm` + `cache-dependency-path: dashboard/package-lock.json`
+          # se habilitarán cuando exista el lockfile. Con `cache: npm` y sin
+          # lockfile, `setup-node` falla; por eso se omite el cache hoy.
+
+      - name: Install dependencies (npm ci | npm install)
+        run: |
+          if [ ! -f package.json ]; then
+            echo "::notice::No hay dashboard/package.json todavía; instalación omitida (noop)."
+            exit 0
+          fi
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            echo "::notice::Sin package-lock.json; se usa npm install (no reproducible)."
+            npm install --no-audit --no-fund
+          fi
+
+      - name: Detectar fuentes del dashboard
+        id: src
+        run: |
+          if [ -f package.json ] && \
+             find src -type f \( -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.jsx' \) \
+               -print -quit 2>/dev/null | grep -q .; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No hay fuentes en dashboard/src todavía; eslint/prettier/tsc omitidos (noop)."
+          fi
+
+      - name: ESLint
+        if: steps.src.outputs.found == 'true'
+        run: npm run lint --if-present
+
+      - name: Prettier --check
+        if: steps.src.outputs.found == 'true'
+        run: npx --no-install prettier --check "src/**/*.{ts,tsx,css,json,md}"
+
+      - name: TypeScript typecheck (tsc --noEmit)
+        if: steps.src.outputs.found == 'true'
+        run: npm run typecheck --if-present
+
+  secret-scan:
+    name: Secret scanning (gitleaks)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write   # subir reporte SARIF al Security tab
+      pull-requests: write     # comentar hallazgos en la PR
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # historial completo para escanear todos los commits
+
+      - name: gitleaks detect (bloquea el merge ante hallazgos)
+        uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Configuración custom: extiende reglas por defecto + allowlist de
+          # docs/ejemplos/plantillas + reglas propias del sistema.
+          GITLEAKS_CONFIG: .gitleaks.toml
+          # Versión alineada con T5 (.pre-commit-config.yaml: gitleaks v8.24.2),
+          # probada con este `.gitleaks.toml` (reglas custom + allowlist).
+          GITLEAKS_VERSION: "8.24.2"
+          GITLEAKS_ENABLE_COMMENTS: "true"
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "true"
+          GITLEAKS_ENABLE_SUMMARY: "true"
+          # Necesaria SOLO si el repositorio pertenece a una organización.
+          # GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}

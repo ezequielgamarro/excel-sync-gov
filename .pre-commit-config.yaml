@@ -1,0 +1,55 @@
+# =============================================================================
+# Pre-commit hooks — "Excel-to-Web" (Tarea T5, Fase F0)
+#
+# Orden de ejecución: formato/lint → checks genéricos → secret scanning.
+# El scanning de secretos va al final porque es el control más crítico (RNF-13)
+# y el más costoso; falla el commit ante cualquier secreto plausible.
+#
+# Herramientas instaladas en entornos aislados por pre-commit (no requieren
+# instalación global). Versiones alineadas con pyproject.toml y CI.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Ruff — linter + formatter (Python). line-length 100, target py311 (pyproject.toml)
+# ---------------------------------------------------------------------------
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  rev: v0.9.6
+  hooks:
+    - id: ruff
+      args: [--fix]
+    - id: ruff-format
+
+# ---------------------------------------------------------------------------
+# Black — formatter (Python). Compatible con `ruff format` (misma salida con
+# line-length 100); se mantiene por compatibilidad con tooling existente.
+# ---------------------------------------------------------------------------
+- repo: https://github.com/psf/black
+  rev: 25.1.0
+  hooks:
+    - id: black
+
+# ---------------------------------------------------------------------------
+# Hooks genéricos (fin de línea, whitespace, YAML/JSON válidos, claves privadas)
+# ---------------------------------------------------------------------------
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v5.0.0
+  hooks:
+    - id: trailing-whitespace
+      # Respetar la convención de .editorconfig: en Markdown los dobles saltos
+      # de línea (hard line breaks) son intencionales.
+      exclude: '\.md$'
+    - id: end-of-file-fixer
+    - id: check-yaml
+    - id: check-json
+    # Crítico (RNF-13): bloquea el commit si se cuela una clave privada PEM/SSH.
+    - id: detect-private-key
+
+# ---------------------------------------------------------------------------
+# Gitleaks — secret scanning (reutiliza .gitleaks.toml ya existente, RNF-13.d).
+# `gitleaks protect` escanea los cambios staged y bloquea ante secretos
+# plausibles (API keys, tokens, certificados, claves privadas, patrones propios).
+# ---------------------------------------------------------------------------
+- repo: https://github.com/gitleaks/gitleaks
+  rev: v8.24.2
+  hooks:
+    - id: gitleaks

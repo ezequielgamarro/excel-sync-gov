@@ -1,0 +1,1947 @@
+openapi: 3.1.0
+info:
+  title: Google Sheets-to-Web — Dashboard de Monitoreo (API REST + WSS)
+  version: 1.0.0
+  description: >-
+    Contrato OpenAPI (fuente única) de la API REST del sistema
+    "Google Sheets-to-Web" (SPEC-001). Deriva de la sección §10 de
+    `specs/001_dashboard_monitoreo/spec.md`.
+
+    Convenciones:
+    - Todos los endpoints de negocio viven bajo `/api/v1`. Los de salud/observabilidad
+      (`/health/*`, `/metrics`, `/schema/messages/*`) y el WebSocket (`/ws/dashboard`)
+      están en la raíz (§10.4).
+    - Formato por defecto: `application/json; charset=utf-8`.
+    - Cuerpo de error uniforme (§10): `{ "error": { "code", "message", "correlation_id" } }`.
+    - Códigos HTTP comunes (§10.5): 200, 201, 202, 204 (logout, reservado), 400, 401,
+      403, 404, 409, 410 (esquema de mensaje no soportado), 413, 422, 429, 500, 503.
+
+    Seguridad:
+    - Origen (Google Sheets / Apps Script): webhook firmado `HMAC-SHA256` con secreto
+      compartido versionado por `key_id` (§9.1–§9.2). La firma viaja en
+      `X-Webhook-Signature: sha256=<hex>` sobre la cadena canónica
+      `"{webhook_id}|{key_id}|{nonce}|{timestamp}|{schema_version}|{sha256(cuerpo)}"`.
+    - Operador: **auth nativa JWT** (usuario+contraseña → `POST /auth/login`),
+      HS256/RS256 firmado por el backend, `aud=dashboard-api`, exp 15 min
+      → `bearerAuth`. Sin IdP externo ni SSO.
+    - WebSocket: ticket de un solo uso (TTL 60 s) emitido por
+      `POST /api/v1/auth/ws-ticket`; nunca se viaja el JWT en la URL (§10.3).
+
+    El contrato WebSocket (`/ws/dashboard`) se documenta en esta especificación
+    mediante la extensión `x-websocket` (OpenAPI 3.1 no tipifica nativamente WS).
+servers:
+  - url: https://api.example.gov
+    description: >-
+      Origen de la API (producción: `api.<dominio-gob>`). El WSS se abre en
+      `wss://api.<dominio-gob>/ws/dashboard`. `/metrics` solo es alcanzable desde
+      la red interna (no expuesto en el edge).
+
+tags:
+  - name: Ingesta
+    description: >-
+      Ingesta del webhook firmado de Google Sheets / Apps Script y gestión del
+      secreto compartido (provisión, rotación y estado).
+  - name: Dashboard
+    description: Lectura del operador (cold start, histórico, export, auditoría).
+  - name: Auth
+    description: Auth nativa JWT (login/refresh/logout) y ticket WSS de un solo uso.
+  - name: Salud
+    description: Liveness, readiness, métricas y esquema de mensajes.
+  - name: Admin
+    description: Gestión de usuarios y roles locales y del secreto del webhook.
+  - name: WebSocket
+    description: Canal de distribución en tiempo real.
+
+paths:
+  /api/v1/ingest/webhook:
+    post:
+      tags: [Ingesta]
+      summary: Ingesta del webhook firmado de Google Sheets / Apps Script
+      description: >-
+        El trigger de Apps Script (`onEdit`/`onChange`) publica una instantánea
+        absoluta del documento de Google Sheets como **JSON firmado**
+        (`application/json`). No hay cifrado de aplicación adicional: la
+        confidencialidad la aporta TLS 1.3 y la autenticación/integridad, la
+        firma `HMAC-SHA256` (§9.1–§9.2).
+
+        El backend verifica, **en este orden y antes de deserializar el cuerpo**
+        (§2.2.1, RF-01.e/f): (1) presencia y formato de las cabeceras; (2)
+        `webhook_id` existe, activo y no revocado; (3) `key_id` conocido y
+        vigente; (4) **firma HMAC-SHA256 válida** (comparación en tiempo
+        constante); (5) `X-Webhook-Timestamp` dentro de ±300 s; (6)
+        `X-Webhook-Nonce` no visto en la ventana de replay (cache 600 s); (7)
+        esquema y rangos del payload contra el JSON Schema y los catálogos fijos.
+
+        Cadena canónica firmada (§9.2):
+        `"{webhook_id}|{key_id}|{nonce}|{timestamp}|{schema_version}|{sha256(cuerpo)}"`,
+        con `X-Webhook-Signature: sha256=<hex>`.
+
+        Idempotencia: `event_id` UNIQUE. Reenvío con el mismo `event_id` → `200`
+        con `duplicate: true` (sin re-aplicar ni redistribuir, RF-01.m / RNF-11.a).
+      operationId: ingestWebhook
+      security:
+        - webhookSignature: []
+      parameters:
+        - $ref: '#/components/parameters/HeaderWebhookId'
+        - $ref: '#/components/parameters/HeaderWebhookKeyId'
+        - $ref: '#/components/parameters/HeaderWebhookNonce'
+        - $ref: '#/components/parameters/HeaderWebhookTimestamp'
+        - $ref: '#/components/parameters/HeaderWebhookVersion'
+        - $ref: '#/components/parameters/HeaderWebhookSignature'
+        - $ref: '#/components/parameters/HeaderCorrelationId'
+      requestBody:
+        required: true
+        description: >-
+          Cuerpo lógico firmado (§10.1). El backend verifica firma y frescura
+          antes de deserializarlo. `payload` sigue la estructura de los KPIs,
+          regional, turnos y ranking del JSON Schema de mensajes; `freshness` y
+          `quality` los calcula el backend y no viajan desde el origen.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookIngestRequest'
+      responses:
+        '202':
+          description: Aceptado y redistribuido por WSS (RF-01.g, RNF-11).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookIngestAccepted'
+        '200':
+          description: "Aceptado pero **duplicado** (`event_id` ya visto); `duplicate: true`."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookIngestAccepted'
+        '400':
+          description: Cuerpo malformado o versión no soportada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Firma HMAC ausente o inválida (no se deserializa).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Webhook revocado o `key_id` no vigente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Anti-replay (nonce repetido o timestamp fuera de ventana).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Payload > 256 KB (plano) o > 64 KB (comprimido).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Esquema/rangos inválidos (KPI negativo, unidad/turno no permitida).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/admin/webhook/secret/rotate:
+    post:
+      tags: [Ingesta, Admin]
+      summary: Rotar el secreto del webhook (nueva `key_id`)
+      description: >-
+        El `platform-admin` genera/rota el secreto compartido del webhook de
+        Google Sheets. Capacidad `platform.manage_webhook` (acción auditada). La
+        rotación mantiene vigentes el secreto
+        anterior y el nuevo durante **24 h (solape)** sin redesplegar el origen.
+        El secreto se muestra **una sola vez** y se configura en `Script
+        Properties` del script de Apps Script (§9.3–§9.5, §10.1).
+      operationId: rotateWebhookSecret
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookSecretRotateRequest'
+      responses:
+        '201':
+          description: Secreto rotado; el material del secreto se devuelve una única vez.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookSecretRotateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Sin capacidad `platform.manage_webhook`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Rotación ya en curso o `webhook_id` inexistente/revocado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/admin/webhook:
+    get:
+      tags: [Ingesta, Admin]
+      summary: Estado del webhook de Google Sheets
+      description: >-
+        Estado del webhook registrado (última recepción, `key_id` vigente,
+        reintentos, modo degradado). Capacidad `platform.manage_webhook`.
+        `platform-admin` no ve indicadores operativos (§2.2.3).
+      operationId: getWebhookStatus
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Estado del webhook.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookStatusResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Sin capacidad `platform.manage_webhook`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /api/v1/dashboard/snapshot:
+    get:
+      tags: [Dashboard]
+      summary: Cold start del dashboard
+      description: >-
+        Devuelve la última instantánea aceptada (sobre `indicators.snapshot`
+        completo, coherente con `contracts/messages/1.0.0.schema.json`).
+        Capacidad requerida: `dash.view.live`.
+      operationId: getDashboardSnapshot
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tz
+          in: query
+          required: false
+          description: Zona horaria IANA. Por defecto, la canónica `America/Argentina/Buenos_Aires`.
+          schema:
+            type: string
+            default: America/Argentina/Buenos_Aires
+        - name: room_id
+          in: query
+          required: false
+          description: Identificador de la sala de operaciones (una instancia = una sala).
+          schema:
+            type: string
+            example: sala-central
+      responses:
+        '200':
+          description: Snapshot actual (sobre `indicators.snapshot`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SnapshotMessage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Sin capacidad `dash.view.live`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Existe un snapshot más nuevo disponible vía WSS (informativo; el cliente puede proceder).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /api/v1/dashboard/consultas:
+    get:
+      tags: [Dashboard]
+      summary: Agregación de la hoja CONSULTAS
+      description: >-
+        Agrupación real de la hoja «CONSULTAS» (20 columnas oficiales de la
+        Jefatura) por Resultado, Causas Penales, Jefatura Regional y Turno,
+        según los filtros globales (Turno, Unidad Regional, Rango). Alimenta los
+        KPIs y los gráficos. Capacidad requerida: `dash.view.live`.
+      operationId: getDashboardConsultas
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: turno
+          in: query
+          required: false
+          description: Turno operativo (filtro).
+          schema:
+            type: string
+            enum: [MAÑANA, TARDE, NOCHE]
+        - name: unidad
+          in: query
+          required: false
+          description: Jefatura/Unidad regional (filtro).
+          schema:
+            type: string
+            enum: [capital, sur, este, oeste, norte]
+        - name: resultado
+          in: query
+          required: false
+          description: Filtro por Resultado (subcadena).
+          schema:
+            type: string
+        - name: causa
+          in: query
+          required: false
+          description: Filtro por Causas Penales (subcadena).
+          schema:
+            type: string
+        - name: rango
+          in: query
+          required: false
+          description: Ventana temporal relativa.
+          schema:
+            type: string
+            enum: [24h, 7d, 30d]
+            default: 24h
+      responses:
+        '200':
+          description: Agregación de CONSULTAS.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsultasAggregation'
+        '400':
+          description: Parámetros fuera del catálogo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Sin capacidad `dash.view.live`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/dashboard/history:
+    get:
+      tags: [Dashboard]
+      summary: Histórico de agregados
+      description: >-
+        Serie temporal de agregados. Capacidad requerida: `dash.view.history`.
+        Rango máximo: 90 días para `supervisor`, 60 meses para `auditor`.
+      operationId: getDashboardHistory
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: from
+          in: query
+          required: true
+          description: Inicio del rango (ISO-8601).
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: true
+          description: Fin del rango (ISO-8601).
+          schema:
+            type: string
+            format: date-time
+        - name: bucket
+          in: query
+          required: true
+          description: Granularidad del agregado.
+          schema:
+            type: string
+            enum: [hour, day]
+        - name: unit
+          in: query
+          required: false
+          description: Unidad regional opcional (filtro validado contra allowlist).
+          schema:
+            type: string
+            enum: [capital, sur, este, oeste, norte]
+        - name: timezone
+          in: query
+          required: false
+          description: Zona horaria para el cálculo de buckets.
+          schema:
+            type: string
+            default: America/Argentina/Buenos_Aires
+      responses:
+        '200':
+          description: Serie temporal de agregados.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HistoryResponse'
+        '400':
+          description: Rango inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Sin capacidad `dash.view.history`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /api/v1/dashboard/export.csv:
+    get:
+      tags: [Dashboard]
+      summary: Exportación CSV de agregados
+      description: >-
+        Capacidad `dash.export.csv` **+ reautenticación reciente (≤ 5 min)**. Genera
+        un CSV de agregados con cabecera de auditoría (`generado_por`, `event_id_base`,
+        `ts`). La exportación se audita (AM-09).
+      operationId: exportDashboardCsv
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: CSV de agregados (con cabecera de auditoría).
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: byte
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Sin capacidad `dash.export.csv` o sin reautenticación reciente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /api/v1/audit/events:
+    get:
+      tags: [Dashboard]
+      summary: Eventos de auditoría
+      description: >-
+        Capacidad requerida: `audit.view`. Devuelve la lista de eventos de auditoría
+        **sin PII** (§RNF-08.c).
+      operationId: listAuditEvents
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: from
+          in: query
+          required: false
+          description: Inicio del rango (ISO-8601).
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: false
+          description: Fin del rango (ISO-8601).
+          schema:
+            type: string
+            format: date-time
+        - name: actor
+          in: query
+          required: false
+          description: '`sub` del operador o `webhook_id` del origen.'
+          schema:
+            type: string
+        - name: action
+          in: query
+          required: false
+          description: >-
+            Acción (p. ej. `webhook.accepted`, `webhook.rejected`,
+            `webhook.secret.rotated`, `user.created`, `role.assigned`).
+          schema:
+            type: string
+        - name: event_id
+          in: query
+          required: false
+          description: Filtra por el `event_id` de datos asociado.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Lista de eventos de auditoría (sin PII).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditEventsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Sin capacidad `audit.view`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login nativo (usuario+contraseña)
+      description: >-
+        Autenticación **nativa** del operador (sin IdP externo ni SSO).
+        Verifica usuario y contraseña contra el almacén local
+        (`app.user_account`, hash Argon2id) con bloqueo por intentos y emite un
+        **access JWT corto** (15 min) + **refresh rotativo** con detección de
+        reutilización. Respuesta `Cache-Control: no-store`.
+      operationId: authLogin
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Credenciales válidas; tokens emitidos.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: no-store, private
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Credenciales inválidas o cuenta no disponible (mensaje genérico).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /api/v1/auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Rotar refresh token
+      description: >-
+        Rota el **refresh token** y emite un nuevo par access+refresh. Reutilizar
+        un refresh ya rotado revoca la cadena completa (reuse detection) y
+        responde `401`. Respuesta `Cache-Control: no-store`.
+      operationId: authRefresh
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: Refresh rotado correctamente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Refresh inválido, reutilizado o cadena revocada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /api/v1/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Cerrar sesión
+      description: >-
+        Revoca la cadena de refresh y marca la sesión para cerrar el WSS en ≤ 30 s.
+        Responde con `Clear-Site-Data: "cache", "storage", "cookies"` (§2.2.5).
+      operationId: authLogout
+      security: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+      responses:
+        '204':
+          description: Sesión cerrada.
+          headers:
+            Clear-Site-Data:
+              schema:
+                type: string
+                example: '"cache", "storage", "cookies"'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /api/v1/auth/ws-ticket:
+    post:
+      tags: [Auth]
+      summary: Emitir ticket WSS de un solo uso
+      description: >-
+        Emite un ticket de un solo uso para abrir el WSS (`wss://…/ws/dashboard?ticket=…`).
+        El ticket encarna `sub`, capacidades y `room_id`; TTL de 60 s y un solo uso.
+        Capacidad requerida: `dash.view.live` (JWT válido).
+      operationId: createWsTicket
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Ticket emitido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WsTicketResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Sin capacidad `dash.view.live`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /health/live:
+    get:
+      tags: [Salud]
+      summary: Liveness (proceso vivo)
+      description: Público (edge). El proceso está vivo.
+      operationId: healthLive
+      security: []
+      responses:
+        '200':
+          description: Proceso vivo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /health/ready:
+    get:
+      tags: [Salud]
+      summary: Readiness (BD + Redis accesibles)
+      description: Red interna. Incluye disponibilidad de PostgreSQL y Redis (RNF-14.g).
+      operationId: healthReady
+      security: []
+      responses:
+        '200':
+          description: BD + Redis accesibles.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /metrics:
+    get:
+      tags: [Salud]
+      summary: Métricas Prometheus (solo red interna)
+      description: >-
+        **Solo red interna** (no público en el edge). Formato de exposición Prometheus.
+      operationId: getMetrics
+      x-internal: true
+      security: []
+      responses:
+        '200':
+          description: Métricas Prometheus.
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /schema/messages/{version}:
+    get:
+      tags: [Salud]
+      summary: JSON Schema del contrato de mensaje
+      description: >-
+        Sirve el JSON Schema del sobre `indicators.snapshot` (§7.8). Autenticado.
+      operationId: getMessageSchema
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: version
+          in: path
+          required: true
+          description: Versión semver del esquema (p. ej. `1.0.0`).
+          schema:
+            type: string
+            pattern: '^\d+\.\d+\.\d+$'
+            example: 1.0.0
+      responses:
+        '200':
+          description: JSON Schema (draft 2020-12) del sobre de mensaje.
+          content:
+            application/json:
+              schema:
+                $ref: './messages/1.0.0.schema.json'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Versión de esquema no publicada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '410':
+          description: Versión mayor no soportada (el cliente debe actualizarse).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/admin/users:
+    get:
+      tags: [Admin]
+      summary: Listar usuarios locales
+      description: >-
+        Lista los usuarios del almacén local (`app.user_account`). Capacidad
+        `platform.manage_users`. Paginado y filtro por nombre. Rate limit
+        estricto: 50 req/min por `sub`.
+      operationId: adminListUsers
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          required: false
+          description: Filtro por nombre de usuario.
+          schema:
+            type: string
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Lista paginada de usuarios.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Sin capacidad `platform.manage_users`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags: [Admin]
+      summary: Crear usuario local
+      description: >-
+        Crea un usuario local con hash Argon2id. Capacidad `platform.manage_users`.
+        Genera evento de auditoría `user.created`.
+      operationId: adminCreateUser
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreateRequest'
+      responses:
+        '201':
+          description: Usuario creado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Sin capacidad `platform.manage_users`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Usuario (username/email) ya existente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/admin/users/{userId}:
+    get:
+      tags: [Admin]
+      summary: Detalle de usuario
+      description: >-
+        Incluye roles, capacidades derivadas y último login. Capacidad
+        `platform.manage_users`.
+      operationId: adminGetUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PathUserId'
+      responses:
+        '200':
+          description: Detalle del usuario.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Sin capacidad `platform.manage_users`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Admin]
+      summary: Actualizar usuario
+      description: >-
+        Actualiza atributos/roles del usuario. Capacidad `platform.manage_users`.
+        Genera `user.updated`.
+      operationId: adminUpdateUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PathUserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+      responses:
+        '200':
+          description: Usuario actualizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Sin capacidad `platform.manage_users`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags: [Admin]
+      summary: Desactivar/borrar usuario
+      description: >-
+        Desactivar o borrar usuario (soft-delete preferido). Capacidad
+        `platform.manage_users`. Genera `user.deleted`.
+      operationId: adminDeleteUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PathUserId'
+      responses:
+        '204':
+          description: Usuario desactivado/borrado.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Sin capacidad `platform.manage_users`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/admin/users/{userId}/roles:
+    post:
+      tags: [Admin]
+      summary: Asignar rol(es)
+      description: >-
+        Asigna roles locales (`viewer`, `supervisor`, `auditor`, `platform-admin`).
+        Capacidad `platform.manage_users`. Genera `role.assigned`.
+      operationId: adminAssignRoles
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PathUserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RolesAssignRequest'
+      responses:
+        '200':
+          description: Roles asignados.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Sin capacidad `platform.manage_users`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/admin/users/{userId}/roles/{roleName}:
+    delete:
+      tags: [Admin]
+      summary: Revocar rol específico
+      description: >-
+        Revoca un rol. Capacidad `platform.manage_users`. Genera `role.revoked`.
+      operationId: adminRevokeRole
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PathUserId'
+        - name: roleName
+          in: path
+          required: true
+          description: Nombre del rol a revocar.
+          schema:
+            type: string
+            example: viewer
+      responses:
+        '204':
+          description: Rol revocado.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Sin capacidad `platform.manage_users`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/admin/users/{userId}/reset-password:
+    post:
+      tags: [Admin]
+      summary: Restablecer contraseña local
+      description: >-
+        El administrador fija una nueva contraseña (hash Argon2id) y se revoca la
+        sesión activa. Capacidad `platform.manage_users`. Genera
+        `user.password.reset`.
+      operationId: adminResetPassword
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PathUserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '200':
+          description: Contraseña restablecida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResetPasswordResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Sin capacidad `platform.manage_users`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/admin/roles:
+    get:
+      tags: [Admin]
+      summary: Listar roles y su mapeo a capacidades
+      description: >-
+        Lista los roles del sistema + mapeo a capacidades.
+        Capacidad `platform.manage_users`.
+      operationId: adminListRoles
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Roles y mapeo rol→capacidad.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Sin capacidad `platform.manage_users`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/admin/roles/{roleName}/capabilities:
+    put:
+      tags: [Admin]
+      summary: Actualizar mapeo rol → capacidades
+      description: >-
+        Actualiza la tabla de configuración `role_capability` del backend.
+        Capacidad `platform.manage_users`.
+      operationId: adminUpdateRoleCapabilities
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: roleName
+          in: path
+          required: true
+          description: Nombre del rol.
+          schema:
+            type: string
+            example: supervisor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleCapabilitiesUpdateRequest'
+      responses:
+        '200':
+          description: Mapeo actualizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleCapabilitiesUpdateRequest'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Sin capacidad `platform.manage_users`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /ws/dashboard:
+    get:
+      tags: [WebSocket]
+      summary: WebSocket Seguro de distribución en tiempo real
+      description: >-
+        Canal de *push* (solo lectura para el cliente) por el que el backend
+        redistribuye las instantáneas en tiempo real con fan-out por `room_id`.
+
+        **Apertura:** el cliente obtiene primero un ticket de un solo uso con
+        `POST /api/v1/auth/ws-ticket` y luego abre
+        `wss://api.<dominio-gob>/ws/dashboard?ticket=tkt_…`. El ticket encarna `sub`,
+        capacidades y `room_id`; TTL 60 s y un solo uso.
+
+        **Mensajes servidor→cliente (JSON, texto):**
+        - `hello`: `{ "type":"hello", "room_id", "schema_version", "server_ts", "last_seq", "heartbeat_interval_s" }`
+        - `indicators.snapshot`: sobre completo (ver `SnapshotMessage`).
+        - `heartbeat`: `{ "type":"heartbeat", "server_ts", "seq_hint" }` (cada 15 s).
+        - `error`: `{ "type":"error", "code", "correlation_id" }`
+
+        **Mensajes cliente→servidor:** sin datos de negocio. Solo
+        `{ "type":"ping", "t":"<epoch_ms>" }` (keepalive) y, opcionalmente,
+        `{ "type":"ack", "seq":N }` (métrica de entrega; ignorable).
+
+        **Orden e idempotencia:** cada mensaje lleva `seq` monótono; el cliente aplica
+        solo `seq > lastSeq`. Salto grande (`Δseq > 50`) → pedir cold start.
+
+        **Reconexión:** backoff exponencial 1→30 s (jitter ±20 %); ante `4003`/`4401`
+        → re-autenticar y pedir ticket nuevo; tras 60 s sin éxito → degradar a polling.
+
+        **Códigos de cierre (§10.3):**
+        - `1000` cierre normal → reconectar con backoff.
+        - `1001` going away (mantenimiento) → reconectar con backoff.
+        - `1008` violación de política (rate limit) → backoff largo (≥ 30 s).
+        - `1009` mensaje demasiado grande → bug, no reintentar igual.
+        - `4001` heartbeat/keepalive expirado → reconectar inmediato.
+        - `4003` capacidad revocada / no autorizado → re-autenticar.
+        - `4401` ticket inválido/expirado/ya usado → pedir ticket nuevo.
+        - `4403` rol/capacidades cambiaron desde la apertura → re-autenticar y reabrir.
+      operationId: wsDashboard
+      x-websocket: true
+      security: []
+      responses:
+        '101':
+          description: >-
+            Switching Protocols (upgrade a WebSocket). Los códigos de cierre del
+            socket (1000, 1001, 1008, 1009, 4001, 4003, 4401, 4403) se documentan en
+            la descripción de la operación (§10.3); no son códigos de respuesta HTTP.
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >-
+        Token de acceso **JWT nativo** emitido por el backend en
+        `POST /auth/login`. Firma HS256/RS256 con `JWT_SIGNING_KEY`,
+        `aud=dashboard-api`, exp ≤ 15 min. Sin IdP externo.
+    webhookSignature:
+      type: apiKey
+      in: header
+      name: X-Webhook-Signature
+      description: >-
+        Firma `HMAC-SHA256` del webhook de Google Sheets / Apps Script con secreto
+        compartido versionado por `key_id` (§9.1–§9.2). Valor
+        `sha256=<hex>` sobre la cadena canónica
+        `"{webhook_id}|{key_id}|{nonce}|{timestamp}|{schema_version}|{sha256(cuerpo)}"`.
+        Se compara en tiempo constante antes de deserializar el cuerpo.
+
+  parameters:
+    HeaderWebhookId:
+      name: X-Webhook-Id
+      in: header
+      required: true
+      description: Identificador del webhook de Google Sheets (un documento = un webhook).
+      schema:
+        type: string
+        example: wh-sifcop-central
+    HeaderWebhookKeyId:
+      name: X-Webhook-Key-Id
+      in: header
+      required: true
+      description: Versión (`key_id`) del secreto compartido usada para firmar.
+      schema:
+        type: string
+        example: wk-2026-10
+    HeaderWebhookNonce:
+      name: X-Webhook-Nonce
+      in: header
+      required: true
+      description: Nonce aleatorio de 128 bits para anti-replay (ventana 600 s).
+      schema:
+        type: string
+        example: 7f3c9a2b1d8e4c6f5a0b3d9e8c7f6a1b
+    HeaderWebhookTimestamp:
+      name: X-Webhook-Timestamp
+      in: header
+      required: true
+      description: Marca de tiempo ISO-8601 UTC; desalineación máxima ±300 s.
+      schema:
+        type: string
+        format: date-time
+        example: '2026-10-03T14:22:05Z'
+    HeaderWebhookVersion:
+      name: X-Webhook-Version
+      in: header
+      required: true
+      description: Versión del esquema del webhook (semver).
+      schema:
+        type: string
+        example: 1.0.0
+    HeaderWebhookSignature:
+      name: X-Webhook-Signature
+      in: header
+      required: true
+      description: 'Firma HMAC-SHA256: `sha256=<hex>`.'
+      schema:
+        type: string
+        pattern: '^sha256=[0-9a-fA-F]{64}$'
+    HeaderCorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: false
+      description: Identificador de correlación extremo a extremo (RNF-07.b).
+      schema:
+        type: string
+        example: tr-01JQ8Z
+    PathUserId:
+      name: userId
+      in: path
+      required: true
+      description: Identificador del usuario local (`app.user_account.user_id`).
+      schema:
+        type: string
+
+  responses:
+    BadRequest:
+      description: Petición malformada.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Token/firma ausente, inválido o expirado (no autenticado).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Autenticado pero sin capacidad (fail-closed).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Recurso no encontrado.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unprocessable:
+      description: Esquema/rangos inválidos.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    TooManyRequests:
+      description: Rate limit excedido.
+      headers:
+        Retry-After:
+          description: Segundos hasta el siguiente intento permitido.
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalError:
+      description: Error interno del servidor.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    ServiceUnavailable:
+      description: Backend no listo (arranque o mantenimiento).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Error:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorBody'
+
+    ErrorBody:
+      type: object
+      additionalProperties: false
+      required: [code, message, correlation_id]
+      description: >-
+        Cuerpo uniforme de error (§10). `code` es estable y programático
+        (p. ej. `CAPACIDAD_DENEGADA`, `FIRMA_INVALIDA`, `ANTI_REPLAY`,
+        `PAYLOAD_INVALID`, `WEBHOOK_REVOCADO`, `RATE_LIMITED`).
+      properties:
+        code:
+          type: string
+          description: Código de error estable.
+        message:
+          type: string
+          description: Descripción legible (sin PII).
+        correlation_id:
+          type: string
+          description: Identificador de correlación extremo a extremo.
+
+    WebhookIngestRequest:
+      description: >-
+        Cuerpo lógico firmado del webhook (§10.1). El backend verifica firma y
+        frescura **antes** de deserializarlo. **No** incluye `freshness`/`quality`
+        (los calcula el backend al aceptar el evento).
+      type: object
+      additionalProperties: false
+      required:
+        [schema_version, event_id, doc_id, sheet_modified_at, data_date, tz, content_sha256, payload]
+      properties:
+        schema_version:
+          type: string
+          example: 1.0.0
+        event_id:
+          type: string
+          format: uuid
+          description: UUIDv7; clave de idempotencia (UNIQUE).
+        doc_id:
+          type: string
+          example: sifcop-resumen
+        sheet_modified_at:
+          type: string
+          format: date-time
+          description: Marca de la última modificación del documento en Google Sheets.
+        data_date:
+          type: string
+          pattern: '^\d{4}-\d{2}-\d{2}$'
+        tz:
+          type: string
+          example: America/Argentina/Buenos_Aires
+        content_sha256:
+          type: string
+          pattern: '^[0-9a-fA-F]{64}$'
+          description: SHA-256 del contenido normalizado (RF-01.c).
+        payload:
+          type: object
+          additionalProperties: false
+          required: [kpis, regional, turnos, ranking]
+          properties:
+            kpis:
+              $ref: './messages/1.0.0.schema.json#/properties/payload/properties/kpis'
+            regional:
+              $ref: './messages/1.0.0.schema.json#/properties/payload/properties/regional'
+            turnos:
+              $ref: './messages/1.0.0.schema.json#/properties/payload/properties/turnos'
+            ranking:
+              $ref: './messages/1.0.0.schema.json#/properties/payload/properties/ranking'
+
+    WebhookIngestAccepted:
+      type: object
+      additionalProperties: false
+      required: [status, duplicate, event_id, seq, received_at, correlation_id]
+      properties:
+        status:
+          type: string
+          enum: [accepted]
+        duplicate:
+          type: boolean
+          description: '`true` cuando el `event_id` ya había sido procesado (idempotencia).'
+        event_id:
+          type: string
+          format: uuid
+        seq:
+          type: integer
+          minimum: 0
+          description: Secuencia monótona asignada por `room_id`.
+        received_at:
+          type: string
+          format: date-time
+        correlation_id:
+          type: string
+
+    WebhookSecretRotateRequest:
+      type: object
+      additionalProperties: false
+      description: >-
+        Parámetros opcionales de la rotación. Si se omite `webhook_id` se rota el
+        webhook registrado por defecto del documento declarado.
+      properties:
+        webhook_id:
+          type: string
+          example: wh-sifcop-central
+        reason:
+          type: string
+          description: Motivo de la rotación (auditado).
+
+    WebhookSecretRotateResponse:
+      type: object
+      additionalProperties: false
+      required: [webhook_id, key_id, secret, overlap_until]
+      properties:
+        webhook_id:
+          type: string
+          example: wh-sifcop-central
+        key_id:
+          type: string
+          example: wk-2026-10
+        secret:
+          type: string
+          description: >-
+            Material del secreto compartido; se muestra **una sola vez** y se
+            configura en `Script Properties` de Apps Script. Nunca se versiona.
+        overlap_until:
+          type: string
+          format: date-time
+          description: Fin del solapamiento (24 h) en que el secreto anterior sigue vigente.
+
+    WebhookStatusResponse:
+      type: object
+      additionalProperties: false
+      required: [webhook_id, doc_id, active, current_key_id, degraded]
+      properties:
+        webhook_id:
+          type: string
+        doc_id:
+          type: string
+        active:
+          type: boolean
+          description: '`false` si el webhook está revocado.'
+        current_key_id:
+          type: string
+        last_received_at:
+          type: string
+          format: date-time
+          description: Marca de la última recepción aceptada.
+        last_result:
+          type: string
+          enum: [accepted, rejected, none]
+        retries_exhausted:
+          type: integer
+          minimum: 0
+          description: Reintentos agotados reportados por el origen.
+        degraded:
+          type: boolean
+          description: '`true` si superó el umbral sin contacto (RF-01.j).'
+
+    SnapshotMessage:
+      $ref: './messages/1.0.0.schema.json'
+
+    HistoryResponse:
+      type: object
+      additionalProperties: false
+      required: [series, meta]
+      properties:
+        series:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [ts]
+            properties:
+              ts:
+                type: string
+                format: date-time
+              kpis:
+                $ref: './messages/1.0.0.schema.json#/properties/payload/properties/kpis'
+              regional:
+                $ref: './messages/1.0.0.schema.json#/properties/payload/properties/regional'
+        meta:
+          type: object
+          additionalProperties: false
+          required: [bucket, count]
+          properties:
+            bucket:
+              type: string
+              enum: [hour, day]
+            count:
+              type: integer
+              minimum: 0
+
+    ConsultaGroup:
+      type: object
+      additionalProperties: false
+      required: [key, label, value]
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        value:
+          type: integer
+          minimum: 0
+
+    ConsultasAggregation:
+      type: object
+      additionalProperties: false
+      description: >-
+        Agregación de la hoja «CONSULTAS» por Resultado, Causas Penales,
+        Jefatura Regional y Turno, más los KPIs derivados.
+      required: [meta, kpis, by_resultado, by_causas_penales, by_jefatura_regional, by_turno, series]
+      properties:
+        meta:
+          type: object
+          additionalProperties: false
+          required: [rango, turno, unidad, resultado, causa, total]
+          properties:
+            rango: { type: string }
+            turno: { type: string }
+            unidad: { type: string }
+            resultado: { type: string }
+            causa: { type: string }
+            total: { type: integer, minimum: 0 }
+        kpis:
+          type: object
+          additionalProperties: false
+          required: [total_consultas, personas_aprehendidas, vehiculos_secuestrados, armas_secuestradas]
+          properties:
+            total_consultas: { type: integer, minimum: 0 }
+            personas_aprehendidas: { type: integer, minimum: 0 }
+            vehiculos_secuestrados: { type: integer, minimum: 0 }
+            armas_secuestradas: { type: integer, minimum: 0 }
+        by_resultado:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConsultaGroup'
+        by_causas_penales:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConsultaGroup'
+        by_jefatura_regional:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConsultaGroup'
+        by_turno:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConsultaGroup'
+        series:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [ts, value]
+            properties:
+              ts:
+                type: string
+                format: date
+              value:
+                type: integer
+                minimum: 0
+
+    AuditEventsResponse:
+      type: object
+      additionalProperties: false
+      required: [events, meta]
+      properties:
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditEvent'
+        meta:
+          type: object
+          additionalProperties: false
+          properties:
+            count:
+              type: integer
+              minimum: 0
+
+    AuditEvent:
+      type: object
+      additionalProperties: false
+      description: >-
+        Entrada de auditoría **sin PII** (§RNF-08.c). Campos mínimos según
+        §RNF-08.b: `ts`, `actor`, `action`, `resource`, `result`, `ip`
+        (seudonimizada), `user_agent`, `correlation_id`, `schema_version`.
+      required: [ts, actor, action, resource, result, correlation_id, schema_version]
+      properties:
+        ts:
+          type: string
+          format: date-time
+        actor:
+          type: string
+          description: '`sub` del operador o `webhook_id` del origen.'
+        action:
+          type: string
+          description: >-
+            p. ej. `webhook.accepted`, `webhook.rejected`,
+            `webhook.secret.rotated`, `user.created`, `role.assigned`, `export.csv`.
+        resource:
+          type: string
+        result:
+          type: string
+          enum: [success, denied, rejected]
+        ip:
+          type: string
+          description: IP seudonimizada.
+        user_agent:
+          type: string
+        correlation_id:
+          type: string
+        schema_version:
+          type: string
+
+    WsTicketResponse:
+      type: object
+      additionalProperties: false
+      required: [ticket, expires_in]
+      properties:
+        ticket:
+          type: string
+          example: tkt_…
+        expires_in:
+          type: integer
+          description: TTL del ticket en segundos (60).
+          example: 60
+
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          maxLength: 128
+        password:
+          type: string
+          maxLength: 512
+          description: Contraseña en claro solo en tránsito (TLS); nunca se registra.
+
+    RefreshRequest:
+      type: object
+      additionalProperties: false
+      required: [refresh_token]
+      properties:
+        refresh_token:
+          type: string
+          description: Refresh token opaco; su reutilización revoca la cadena.
+
+    LogoutRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        refresh_token:
+          type: string
+          description: Refresh a revocar (opcional; revoca su cadena si se aporta).
+
+    TokenResponse:
+      type: object
+      additionalProperties: false
+      required: [access_token, refresh_token, token_type, expires_in, sub, roles, capabilities]
+      properties:
+        access_token:
+          type: string
+          description: JWT de acceso firmado por el backend (≤ 15 min).
+        refresh_token:
+          type: string
+          description: Refresh rotativo (cadena con detección de reutilización).
+        token_type:
+          type: string
+          enum: [bearer]
+        expires_in:
+          type: integer
+          description: Vida del access token en segundos (900).
+          example: 900
+        sub:
+          type: string
+          description: Identidad estable del operador (`app.user_account.sub`).
+        roles:
+          type: array
+          items:
+            type: string
+            enum: [viewer, supervisor, auditor, platform-admin]
+        capabilities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Capability'
+
+    HealthResponse:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+
+    UserCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [username, password, roles]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          description: Contraseña inicial; se almacena solo como hash Argon2id.
+        roles:
+          type: array
+          items:
+            type: string
+            enum: [viewer, supervisor, auditor, platform-admin]
+
+    UserUpdateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        enabled:
+          type: boolean
+        roles:
+          type: array
+          items:
+            type: string
+            enum: [viewer, supervisor, auditor, platform-admin]
+
+    Capability:
+      type: string
+      description: Capacidad ortogonal comprobada por el backend (§2.2.3).
+      enum:
+        - dash.view.live
+        - dash.view.history
+        - dash.export.csv
+        - audit.view
+        - platform.manage_webhook
+        - platform.manage_users
+        - platform.rotate_secrets
+        - platform.replay
+
+    UserResponse:
+      type: object
+      additionalProperties: false
+      required: [id, username, enabled, estado, roles]
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        enabled:
+          type: boolean
+        estado:
+          type: string
+          enum: [activo, deshabilitado]
+        roles:
+          type: array
+          items:
+            type: string
+            enum: [viewer, supervisor, auditor, platform-admin]
+        capabilities:
+          type: array
+          description: Capacidades derivadas del mapeo rol→capacidad.
+          items:
+            $ref: '#/components/schemas/Capability'
+        lastLogin:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    UserListResponse:
+      type: object
+      additionalProperties: false
+      required: [users, meta]
+      properties:
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserResponse'
+        meta:
+          type: object
+          additionalProperties: false
+          properties:
+            count:
+              type: integer
+
+    RolesAssignRequest:
+      type: object
+      additionalProperties: false
+      required: [roles]
+      properties:
+        roles:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            enum: [viewer, supervisor, auditor, platform-admin]
+
+    ResetPasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [new_password]
+      properties:
+        new_password:
+          type: string
+          description: Nueva contraseña; se almacena solo como hash Argon2id.
+
+    ResetPasswordResponse:
+      type: object
+      additionalProperties: false
+      required: [id, reset]
+      properties:
+        id:
+          type: string
+        reset:
+          type: boolean
+
+    RoleListResponse:
+      type: object
+      additionalProperties: false
+      required: [roles]
+      properties:
+        roles:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [name, capabilities]
+            properties:
+              name:
+                type: string
+                enum: [viewer, supervisor, auditor, platform-admin]
+              capabilities:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Capability'
+
+    RoleCapabilitiesUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [capabilities]
+      properties:
+        capabilities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Capability'
+
+    WssHello:
+      type: object
+      additionalProperties: false
+      required: [type, room_id, schema_version, server_ts, last_seq, heartbeat_interval_s]
+      properties:
+        type:
+          type: string
+          const: hello
+        room_id:
+          type: string
+        schema_version:
+          type: string
+        server_ts:
+          type: string
+          format: date-time
+        last_seq:
+          type: integer
+        heartbeat_interval_s:
+          type: integer
+          example: 15
+
+    WssHeartbeat:
+      type: object
+      additionalProperties: false
+      required: [type, server_ts, seq_hint]
+      properties:
+        type:
+          type: string
+          const: heartbeat
+        server_ts:
+          type: string
+          format: date-time
+        seq_hint:
+          type: integer
+
+    WssError:
+      type: object
+      additionalProperties: false
+      required: [type, code, correlation_id]
+      properties:
+        type:
+          type: string
+          const: error
+        code:
+          type: string
+        correlation_id:
+          type: string
+
+    WssPing:
+      description: Mensaje cliente→servidor (keepalive de aplicación).
+      type: object
+      additionalProperties: false
+      required: [type, t]
+      properties:
+        type:
+          type: string
+          const: ping
+        t:
+          type: string
+          description: epoch en milisegundos.
+
+    WssAck:
+      description: Mensaje cliente→servidor (métrica de entrega; ignorable).
+      type: object
+      additionalProperties: false
+      required: [type, seq]
+      properties:
+        type:
+          type: string
+          const: ack
+        seq:
+          type: integer

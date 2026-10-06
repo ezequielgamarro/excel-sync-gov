@@ -1,0 +1,141 @@
+# =============================================================================
+# pyproject.toml — configuración raíz del monorepo Python (backend)
+# Tarea T5 (Fase F0): estándares de calidad de código y versionado.
+#
+# Decisión de layout (documentada aquí como fuente de verdad):
+#   Se usa UN ÚNICO `pyproject.toml` en la raíz en lugar de un config por
+#   componente porque:
+#     1. backend/ concentra el stack Python (3.11), estilo y versiones. El
+#        origen `apps-script/` es Apps Script (JavaScript), fuera de estas
+#        herramientas.
+#     2. CI invoca `ruff check backend` y `mypy backend` desde la raíz (ver
+#        .github/workflows/ci.yml), por lo que un único config raíz es la
+#        fuente de verdad y evita derivas.
+#     3. Evita duplicar [tool.ruff] / [tool.black] / [tool.mypy] en dos sitios.
+#
+# Nota: este archivo es únicamente de CONFIGURACIÓN de herramientas; no define
+# un paquete instalable ni build-system (el backend se empaqueta en F2).
+# =============================================================================
+
+[project]
+name = "excel-sync-gov"
+version = "0.1.0"
+description = "Google Sheets-to-Web: sincronización Zero Trust de indicadores (backend)."
+requires-python = ">=3.11"
+
+# ---------------------------------------------------------------------------
+# Dependencias de desarrollo (calidad de código).
+# Grupo PEP 735 (`[dependency-groups]`). Instalar con:
+#   uv sync --group dev          # si se usa uv
+#   pip install ruff black mypy  # instalación directa (equivale al grupo dev)
+# CI ya instala ruff + mypy explícitamente (ver .github/workflows/ci.yml).
+# ---------------------------------------------------------------------------
+[dependency-groups]
+dev = [
+    "ruff>=0.9.6",
+    "black>=25.1.0",
+    "mypy>=1.14.0",
+]
+
+# Dependencias de RUNTIME del backend (F1/F2). Instalar con:
+#   uv sync --group backend
+#   pip install -r backend/requirements.txt   # espejo pip (ver abajo)
+# alembic + sqlalchemy = migraciones (backend/alembic/, T7; env.py importa sqlalchemy).
+# asyncpg = driver asíncrono (coincide con DATABASE_URL=postgresql+asyncpg://).
+# psycopg = driver síncrono alternativo (opcional; offline/sync).
+# fastapi/uvicorn = API + servidor ASGI (F2, T16). uvicorn>=0.47 aporta
+# `ssl_context_factory`, usado por app/core/tls.py para forzar SOLO TLS 1.3
+# (OD-09, T18).
+# pydantic-settings = config tipada desde entorno (F2, T16).
+# prometheus-client = métricas /metrics (F2, T21).
+# redis = pub/sub, presencia y rate limit distribuido (F2, T19).
+# httpx = cliente HTTP asíncrono (llamadas salientes del backend y pruebas, F2/F5).
+backend = [
+    "alembic>=1.14.0",
+    "asyncpg>=0.30.0",
+    "psycopg[binary]>=3.2.0",
+    "sqlalchemy[asyncio]>=2.0.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.47.0",
+    "pydantic-settings>=2.4.0",
+    "prometheus-client>=0.20.0",
+    "opentelemetry-api>=1.25.0",
+    "opentelemetry-sdk>=1.25.0",
+    "opentelemetry-exporter-otlp-proto-http>=1.25.0",
+    "redis>=5.0.0",
+    "httpx>=0.27.0",
+    "cryptography>=42.0.0",
+    "argon2-cffi>=23.1.0",
+    "jsonschema>=4.22.0",
+    "pandas>=2.2.0",
+    "openpyxl>=3.1.0",
+    "python-dotenv>=1.0.0",
+    "requests>=2.31.0",
+]
+
+# =============================================================================
+# ruff — linter + formatter
+# =============================================================================
+[tool.ruff]
+# Longitud de línea 100, coincidente con black y con la convención del repo.
+line-length = 100
+target-version = "py311"
+extend-exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "build",
+    "dist",
+]
+
+[tool.ruff.lint]
+# Reglas base: pyflakes (F) + pycodestyle (E, W) + isort (I) + flake8-bugbear (B).
+# Conjunto conservador y de bajo ruido; se amplía por fases si el equipo lo decide.
+select = ["E", "F", "W", "I", "B"]
+ignore = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+# =============================================================================
+# black — formatter (compatible con ruff format)
+# =============================================================================
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+# =============================================================================
+# mypy — type checker (strict)
+# =============================================================================
+[tool.mypy]
+python_version = "3.11"
+strict = true
+# CI invoca `mypy backend` con rutas explícitas; aquí se deja la
+# configuración de política. No se fija `files` para no interferir con las
+# rutas que pasa CI (y para typecheckear cualquier paquete nuevo sin tocar esto).
+warn_unused_configs = true
+
+# jsonschema no distribuye marcador `py.typed` (PEP 561); sus llamadas se tratan
+# como `Any` para que el typecheck estricto no dependa de un stub de terceros.
+[[tool.mypy.overrides]]
+module = ["jsonschema"]
+ignore_missing_imports = true
+
+# =============================================================================
+# pytest — F9 (T65..T71): tests de backend (unidad + integración)
+# =============================================================================
+# `pythonpath = ["backend"]` permite `from app... import ...` sin instalar el
+# paquete. Los tests de F9 también pueden ejecutarse en un entorno sin las
+# dependencias de runtime: los que no las necesitan usan *stubs* mínimos y
+# `assert` de stdlib (ver docstring de cada archivo). `testpaths` acota la
+# recolección a `backend/tests`.
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+pythonpath = ["backend"]
+addopts = "-q"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]

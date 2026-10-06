@@ -1,0 +1,99 @@
+# =============================================================================
+# infra/docker/docker-compose.yml — entorno local / pre-producción (T72).
+#
+# Levanta el backend + PostgreSQL + Redis. El backend es SIN ESTADO (el estado
+# compartido vive en Redis/PostgreSQL), por lo que puede escalarse horizontal:
+#
+#   docker compose -f infra/docker/docker-compose.yml up -d --build
+#   docker compose -f infra/docker/docker-compose.yml up -d --scale backend=3
+#
+# En producción con orquestador (Swarm/K8s) se usa `docker-stack.prod.yml`
+# (réplicas declarativas + rolling deploy start-first).
+#
+# Los SECRETOS no se escriben aquí: se inyectan por entorno desde el gestor de
+# secretos (RNF-13). En local se puede usar el `.env` de la raíz (ignorado por
+# git) mediante `env_file` opcional.
+# =============================================================================
+
+name: excel-sync-gov
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-excel_sync_gov}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?define POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-excel_sync_gov}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [data]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "no", "--save", "", "--requirepass", "${REDIS_PASSWORD:?define REDIS_PASSWORD}"]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?define REDIS_PASSWORD}
+    networks: [data]
+
+  backend:
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+    image: ${BACKEND_IMAGE:-excel-sync-gov-backend:local}
+    restart: unless-stopped
+    # Secretos y configuración desde el entorno / `.env` local (ignorado por git).
+    env_file:
+      - path: ../../.env
+        required: false
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      DATABASE_URL: ${DATABASE_URL:?define DATABASE_URL}
+      REDIS_URL: ${REDIS_URL:?define REDIS_URL}
+      CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-}
+      FORCE_TLS: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health/live', timeout=2).status == 200 else 1)"]
+      interval: 15s
+      timeout: 3s
+      start_period: 20s
+      retries: 3
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    # Planilla de hospitales provista por el usuario (solo lectura).
+    volumes:
+      - ../../backend/data:/app/data:ro
+    # Endurecimiento: FS de solo lectura + tmpfs para temporales.
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    networks: [data, edge]
+
+volumes:
+  postgres-data:
+
+networks:
+  data:
+    internal: true
+  edge:
+    driver: bridge

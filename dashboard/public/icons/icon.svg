@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192" role="img" aria-label="Dashboard de monitoreo">
+  <rect width="192" height="192" rx="28" fill="#05080F" />
+  <rect x="20" y="96" width="22" height="60" rx="4" fill="#0EA5E9" />
+  <rect x="56" y="72" width="22" height="84" rx="4" fill="#38BDF8" />
+  <rect x="92" y="48" width="22" height="108" rx="4" fill="#38BDF8" />
+  <rect x="128" y="84" width="22" height="72" rx="4" fill="#0EA5E9" />
+  <rect x="20" y="30" width="152" height="8" rx="4" fill="#38BDF8" />
+</svg>

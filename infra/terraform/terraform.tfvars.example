@@ -1,0 +1,17 @@
+# =============================================================================
+# infra/terraform/terraform.tfvars.example — variables de ejemplo (T74).
+# Copiar a `terraform.tfvars` (IGNORADO por git) y rellenar. Sin secretos reales
+# en el repositorio (RNF-13): el token de Cloudflare se pasa por
+# `TF_VAR_cloudflare_api_token` en CI o en el shell.
+# =============================================================================
+
+project_id       = "excel-sync-gov-prod"
+region           = "southamerica-east1"
+environment      = "production"
+backup_location  = "us-central1"
+
+cloudflare_zone_id  = "00000000000000000000000000000000"
+dashboard_hostname  = "dashboard.example.gov"
+api_hostname        = "api.example.gov"
+
+# NO poner valores de secretos aquí. Usar variables de entorno TF_VAR_*.

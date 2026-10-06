@@ -1,0 +1,86 @@
+# ============================================================
+# Secretos y credenciales (crítico — RNF-13, §9.5)
+# NINGÚN secreto puede versionarse jamás.
+# ============================================================
+.env
+.env.*
+!.env.example
+secrets.*
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# ------------------------------------------------------------
+# Python (backend)
+# ------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage/
+.venv/
+venv/
+.eggs/
+*.egg-info/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# ------------------------------------------------------------
+# Node / JavaScript (dashboard)
+# ------------------------------------------------------------
+node_modules/
+dist/
+build/
+.eslintcache
+.vite/
+.prettierrc.cache
+
+# ------------------------------------------------------------
+# Google Apps Script (apps-script/)
+# ------------------------------------------------------------
+# Credenciales locales de clasp (NUNCA versionar) y artefactos de build/despliegue.
+.clasprc.json
+.clasp.json
+apps-script/dist/
+apps-script/build/
+
+# ------------------------------------------------------------
+# Bases de datos locales
+# ------------------------------------------------------------
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# ------------------------------------------------------------
+# IDEs / editores
+# ------------------------------------------------------------
+# .vscode se excluye salvo los settings compartidos del equipo
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/tasks.json
+!.vscode/launch.json
+.idea/
+*.iml
+
+# ------------------------------------------------------------
+# Logs y salidas generadas
+# ------------------------------------------------------------
+*.log
+logs/
+output/
+
+# ------------------------------------------------------------
+# Sistema operativo
+# ------------------------------------------------------------
+Thumbs.db
+.DS_Store
+desktop.ini

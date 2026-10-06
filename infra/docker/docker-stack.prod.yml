@@ -1,0 +1,99 @@
+# =============================================================================
+# infra/docker/docker-stack.prod.yml — despliegue de producción (T72).
+#
+# Orquestador: Docker Swarm (también sirve como referencia para K8s).
+#
+#   export $(secret_manager render ...)   # NUNCA en el repo (RNF-13)
+#   docker stack deploy -c infra/docker/docker-stack.prod.yml excel-sync-gov
+#
+# Garantías:
+#   - >=3 réplicas SIN ESTADO: el fan-out/presencia/rate limit están en Redis
+#     (RNF-06.c); no hay volúmenes de datos montados en el backend.
+#   - Rolling deploy SIN CORTE: `order: start-first` levanta la réplica nueva y
+#     espera su healthcheck antes de retirar la antigua; `failure_action:
+#     rollback` revierte ante fallo.
+#   - Secreto en runtime: variables inyectadas por el gestor de secretos en el
+#     shell de despliegue. Ningún valor se versiona.
+# =============================================================================
+
+version: "3.9"
+
+services:
+  backend:
+    image: ${BACKEND_IMAGE:?define BACKEND_IMAGE (registry/tag inmutable)}
+    environment:
+      ENVIRONMENT: production
+      DATABASE_URL: ${DATABASE_URL:?}
+      REDIS_URL: ${REDIS_URL:?}
+      JWT_SIGNING_KEY: ${JWT_SIGNING_KEY:?}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      WEBHOOK_ID: ${WEBHOOK_ID:?}
+      WEBHOOK_KEY_ID: ${WEBHOOK_KEY_ID:?}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET:?}
+      KEK_ID: ${KEK_ID:?}
+      KEK_MATERIAL: ${KEK_MATERIAL:?}
+      DATA_KEY: ${DATA_KEY:?}
+      KEY_ID: ${KEY_ID:?}
+      CSRF_SECRET: ${CSRF_SECRET:-}
+      GOOGLE_SERVICE_ACCOUNT_JSON: ${GOOGLE_SERVICE_ACCOUNT_JSON:-}
+      CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:?}
+      CORS_ALLOW_CREDENTIALS: "true"
+      FORCE_TLS: "false"
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    deploy:
+      # >=3 réplicas sin estado (RNF-06.c). Escalar con `docker service scale`.
+      replicas: 3
+      endpoint_mode: vip
+      update_config:
+        order: start-first          # rolling sin corte (dashboard siempre servido)
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+        monitor: 30s
+        max_failure_ratio: 0
+      rollback_config:
+        order: start-first
+        parallelism: 1
+        monitor: 30s
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 0
+        window: 120s
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+      placement:
+        constraints:
+          - node.role == worker
+      labels:
+        - "traefik.enable=true"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health/live', timeout=2).status == 200 else 1)"]
+      interval: 15s
+      timeout: 3s
+      start_period: 20s
+      retries: 3
+    networks: [edge]
+
+networks:
+  edge:
+    external: true
+    name: excel-sync-gov-edge

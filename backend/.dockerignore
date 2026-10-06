@@ -1,0 +1,37 @@
+# =============================================================================
+# backend/.dockerignore — contexto de build mínimo (T72).
+# Mantiene la imagen pequeña y evita filtrar secretos/tests al contexto.
+# =============================================================================
+# Secretos y entornos (RNF-13): nunca deben entrar al contexto de build.
+.env
+.env.*
+!.env.example
+secrets.*
+*.pem
+*.key
+*.crt
+
+# Tests, cachés y artefactos.
+tests/
+**/__pycache__/
+**/*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+*.egg-info/
+htmlcov/
+.coverage
+coverage/
+
+# Documentación y ficheros no necesarios en runtime.
+docs/
+README.md
+*.md
+
+# Tooling / VCS / editores.
+.git/
+.gitignore
+.dockerignore
+Dockerfile

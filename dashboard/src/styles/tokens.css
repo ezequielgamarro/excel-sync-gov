@@ -1,0 +1,85 @@
+/*
+ * Tokens de diseño — Dirección institucional policial (dark, bordes redondeados,
+ * acento azul neón/eléctrico). Fuente única de la paleta; Tailwind la duplica en
+ * `tailwind.config.js` (mismos hex) y los componentes usan ambas vías.
+ *
+ * Contraste verificado (WCAG 2.2 AA, `src/test/contrast.test.ts`):
+ *   #F2F6FC / #C3CFE0 / #8FA1BA / #4CC2FF sobre #0A101C  ≥ 4,5:1
+ *   #1E90FF sobre #111A2E ≥ 3:1 (objeto gráfico)
+ */
+:root {
+  --bg-base: #04070f;
+  --bg-surface: #0a101c;
+  --bg-surface-2: #111a2e;
+  --bg-surface-3: #16223a;
+  --border: #1e2c48;
+  --border-strong: #2c4069;
+
+  --text-primary: #f2f6fc;
+  --text-secondary: #c3cfe0;
+  --text-muted: #8fa1ba;
+
+  /* Azul neón / eléctrico: acento táctico de sala 24/7. */
+  --accent: #4cc2ff;
+  --accent-strong: #1e90ff;
+  --accent-bright: #8fe3ff;
+  --accent-soft: rgba(76, 194, 255, 0.12);
+  --accent-glow: rgba(76, 194, 255, 0.4);
+
+  /* Azul institucional del escudo oficial "Policía de Tucumán" (muestreado del
+     asset `public/icons/logo-policia-tucuman.png`): #303888 = azul dominante
+     (hue 234.5°), #5161ff = misma tonalidad más luminosa para el neón. */
+  --police-blue: #303888;
+  --police-blue-bright: #5161ff;
+
+  --pos: #34d399;
+  --neg: #f87171;
+  --warn: #fbbf24;
+  --neutral: #94a3b8;
+
+  /* Retícula: 12 columnas, gutter 24 px, padding 24 px; base 8 px. */
+  --grid-gutter: 24px;
+  --panel-padding: 24px;
+  --space-unit: 8px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --panel-radius: 18px;
+  --header-height: 72px;
+  --kpi-row-height: 156px;
+
+  /* Tipografía: display condensada institucional + datos monoespaciados. */
+  --font-display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-sans: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Escala tipográfica. */
+  --fs-kpi-value: 40px;
+  --fs-kpi-variation: 14px;
+  --fs-panel-title: 19px;
+  --fs-label: 12px;
+  --fs-body: 14px;
+  --fs-axis: 12px;
+  --fs-badge: 12px;
+
+  /* Movimiento: un único momento orquestado en carga; destello breve en datos. */
+  --anim-enter: 480ms;
+  --anim-count: 400ms;
+  --anim-flash: 600ms;
+}
+
+/* Numeración tabular monoespaciada: cifras que no "bailan" en sala. */
+.num,
+.kpi-value,
+table td.num,
+.tabular {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Foco visible accesible (≥ 2 px, 3:1). */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

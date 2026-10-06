@@ -1,0 +1,60 @@
+# =============================================================================
+# backend/requirements.txt — Dependencias de RUNTIME del backend (F1/F2).
+# =============================================================================
+# Espejo pip de `[dependency-groups].backend` de `pyproject.toml` (fuente de
+# verdad). Úsalo para instalaciones con pip (CI) o entornos sin uv:
+#
+#   pip install -r backend/requirements.txt
+#
+# Mantener sincronizado con `[dependency-groups].backend`.
+# =============================================================================
+
+# Migraciones (backend/alembic/, T7) — env.py importa sqlalchemy.
+alembic>=1.14.0
+sqlalchemy[asyncio]>=2.0.0
+
+# Drivers de base de datos.
+asyncpg>=0.30.0
+psycopg[binary]>=3.2.0
+
+# API y servidor ASGI (F2, T16). uvicorn>=0.47 aporta `ssl_context_factory`,
+# usado por app/core/tls.py para forzar SOLO TLS 1.3 (OD-09, T18).
+fastapi>=0.115.0
+uvicorn[standard]>=0.47.0
+
+# Config tipada desde el entorno (F2, T16).
+pydantic-settings>=2.4.0
+
+# Métricas Prometheus (F2, T21).
+prometheus-client>=0.20.0
+
+# Trazas distribuidas OpenTelemetry (T59, RNF-07.b). El backend degrada con
+# elegancia si no están: propaga el contexto W3C/`X-Correlation-Id` igualmente.
+opentelemetry-api>=1.25.0
+opentelemetry-sdk>=1.25.0
+opentelemetry-exporter-otlp-proto-http>=1.25.0
+
+# Redis: pub/sub, presencia y rate limit distribuido (F2, T19).
+redis>=5.0.0
+
+# Cliente HTTP asíncrono (llamadas salientes del backend y pruebas, F2/F5).
+httpx>=0.27.0
+
+# Cifrado de aplicación y autenticación (F3, T22/T23).
+cryptography>=42.0.0
+argon2-cffi>=23.1.0
+
+# Validación de esquema (F3, T25).
+jsonschema>=4.22.0
+
+# Lectura de planillas Excel locales (endpoint de hospitales). `pandas`/
+# `openpyxl` se importan de forma perezosa dentro del handler.
+pandas>=2.2.0
+openpyxl>=3.1.0
+
+# Lectura de variables de entorno desde `.env` en desarrollo
+# (`EXCEL_POLICIA_URL` en el endpoint de estadísticas).
+python-dotenv>=1.0.0
+
+# Cliente HTTP para descargas de Google Sheets (respaldo de pandas).
+requests>=2.31.0

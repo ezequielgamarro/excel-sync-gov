@@ -1,0 +1,61 @@
+# =============================================================================
+# infra/observability/prometheus/prometheus.yml — scraping de producción (T77).
+#
+# El backend expone `/metrics` SOLO en red interna (RNF-07.c); Prometheus corre
+# dentro de la red interna del servicio. El token del scraper se lee de fichero
+# (nunca se versiona, RNF-13).
+#
+# Synthetic checks: cada 60 s se sondean los healthchecks públicos y el cold
+# start (RNF-06.a, RNF-07.f) mediante `blackbox_exporter`.
+# =============================================================================
+
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 15s
+  external_labels:
+    system: excel-sync-gov
+    environment: production
+
+rule_files:
+  - /etc/prometheus/rules/alerts.yml
+
+scrape_configs:
+  # --- Métricas internas del backend (RNF-07.a) ------------------------------
+  - job_name: backend
+    metrics_path: /metrics
+    scheme: http
+    authorization:
+      type: Bearer
+      credentials_file: /etc/prometheus/secrets/metrics_scrape_token
+    static_configs:
+      - targets:
+          - backend:8000
+        labels:
+          service: backend
+
+  # --- Synthetic checks por minuto (healthchecks + cold start) ---------------
+  - job_name: synthetic-health
+    metrics_path: /probe
+    scrape_interval: 60s
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - https://api.example.gov/health/live
+          - https://api.example.gov/dashboard/snapshot
+          - https://dashboard.example.gov/
+        labels:
+          service: synthetic
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  # --- Salud de las propias exportaciones ------------------------------------
+  - job_name: prometheus
+    static_configs:
+      - targets: [localhost:9090]

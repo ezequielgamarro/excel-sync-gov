@@ -1,0 +1,201 @@
+{
+  "schema_version": "1.0.0",
+  "type": "indicators.snapshot",
+  "event_id": "018f1d2e-3a4b-7c5d-8e6f-0a1b2c3d4e5f",
+  "seq": 10427,
+  "room_id": "sala-central",
+  "ts": "2026-10-03T14:22:05.412Z",
+  "tz": "America/Argentina/Buenos_Aires",
+  "tz_offset_minutes": -180,
+  "data_date": "2026-10-03",
+  "source": {
+    "webhook_id": "wh-sifcop-central",
+    "doc_id": "sifcop-resumen",
+    "content_sha256": "9f2c1ab4e6d7584a1b0c3d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a",
+    "sheet_modified_at": "2026-10-03T14:21:58Z"
+  },
+  "payload": {
+    "kpis": {
+      "total_consultas_sifcop": {
+        "label": "Total Consultas SIFCOP",
+        "value": 184732,
+        "delta_abs": 3120,
+        "delta_pct": 1.71,
+        "direction": "up",
+        "comparison": "ayer_mismo_tramo",
+        "baseline_value": 181612,
+        "as_of": "2026-10-03T14:22:05Z",
+        "has_reference": true
+      },
+      "personas_capturadas": {
+        "label": "Personas Capturadas",
+        "value": 4128,
+        "delta_abs": 218,
+        "delta_pct": 5.57,
+        "direction": "up",
+        "comparison": "ayer_mismo_tramo",
+        "baseline_value": 3910,
+        "as_of": "2026-10-03T14:22:05Z",
+        "has_reference": true
+      },
+      "vehiculos_secuestrados": {
+        "label": "Vehículos Secuestrados",
+        "value": 37,
+        "delta_abs": -6,
+        "delta_pct": -13.95,
+        "direction": "down",
+        "comparison": "ayer_mismo_tramo",
+        "baseline_value": 43,
+        "as_of": "2026-10-03T14:22:05Z",
+        "has_reference": true
+      },
+      "armas_secuestradas": {
+        "label": "Armas Secuestradas",
+        "value": 12,
+        "delta_abs": 2,
+        "delta_pct": 20.0,
+        "direction": "up",
+        "comparison": "ayer_mismo_tramo",
+        "baseline_value": 10,
+        "as_of": "2026-10-03T14:22:05Z",
+        "has_reference": true
+      }
+    },
+    "regional": [
+      {
+        "unidad_id": "capital",
+        "label": "Capital",
+        "intervenciones": 268,
+        "variacion_abs": 22,
+        "variacion_pct": 8.93,
+        "rank": 1
+      },
+      {
+        "unidad_id": "sur",
+        "label": "Sur",
+        "intervenciones": 142,
+        "variacion_abs": -5,
+        "variacion_pct": -3.4,
+        "rank": 2
+      },
+      {
+        "unidad_id": "este",
+        "label": "Este",
+        "intervenciones": 98,
+        "variacion_abs": 7,
+        "variacion_pct": 7.74,
+        "rank": 3
+      },
+      {
+        "unidad_id": "oeste",
+        "label": "Oeste",
+        "intervenciones": 71,
+        "variacion_abs": -3,
+        "variacion_pct": -4.05,
+        "rank": 4
+      },
+      {
+        "unidad_id": "norte",
+        "label": "Norte",
+        "intervenciones": 34,
+        "variacion_abs": 1,
+        "variacion_pct": 3.03,
+        "rank": 5
+      }
+    ],
+    "turnos": [
+      {
+        "turno_id": "MAÑANA",
+        "inicio_min": 360,
+        "fin_min": 840,
+        "label": "MAÑANA (06-14)",
+        "intervenciones": 231,
+        "variacion_abs": 25,
+        "variacion_pct": 12.14,
+        "estado": "cerrada"
+      },
+      {
+        "turno_id": "TARDE",
+        "inicio_min": 840,
+        "fin_min": 1320,
+        "label": "TARDE (14-22)",
+        "intervenciones": 318,
+        "variacion_abs": 12,
+        "variacion_pct": 3.92,
+        "estado": "en_curso"
+      },
+      {
+        "turno_id": "NOCHE",
+        "inicio_min": 1320,
+        "fin_min": 360,
+        "label": "NOCHE (22-06)",
+        "intervenciones": 142,
+        "variacion_abs": -8,
+        "variacion_pct": -5.33,
+        "estado": "pendiente"
+      }
+    ],
+    "ranking": {
+      "top_n": 5,
+      "dependencias": [
+        {
+          "puesto": 1,
+          "dependencia_id": "com-12",
+          "comisaria": "Comisaría 12",
+          "intervenciones": 94,
+          "variacion_abs": 12,
+          "variacion_pct": 14.63,
+          "puesto_previo": 2
+        },
+        {
+          "puesto": 2,
+          "dependencia_id": "com-07",
+          "comisaria": "Comisaría 7",
+          "intervenciones": 88,
+          "variacion_abs": -4,
+          "variacion_pct": -4.35,
+          "puesto_previo": 1
+        },
+        {
+          "puesto": 3,
+          "dependencia_id": "com-03",
+          "comisaria": "Comisaría 3",
+          "intervenciones": 81,
+          "variacion_abs": 5,
+          "variacion_pct": 6.58,
+          "puesto_previo": 3
+        },
+        {
+          "puesto": 4,
+          "dependencia_id": "dep-norte",
+          "comisaria": "Dependencia Norte",
+          "intervenciones": 74,
+          "variacion_abs": 1,
+          "variacion_pct": 1.37,
+          "puesto_previo": 5
+        },
+        {
+          "puesto": 5,
+          "dependencia_id": "com-21",
+          "comisaria": "Comisaría 21",
+          "intervenciones": 69,
+          "variacion_abs": -6,
+          "variacion_pct": -8.0,
+          "puesto_previo": 4
+        }
+      ]
+    },
+    "freshness": {
+      "last_event_ts": "2026-10-03T14:22:05.412Z",
+      "sheet_modified_at": "2026-10-03T14:21:58Z",
+      "stale": false,
+      "age_seconds": 0
+    },
+    "quality": {
+      "partial": false,
+      "source_rows": 5,
+      "warnings": []
+    }
+  },
+  "correlation_id": "tr-01JQ8Z2X4N7M5P3K"
+}

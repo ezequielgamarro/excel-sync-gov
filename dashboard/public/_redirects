@@ -1,0 +1,3 @@
+# Cloudflare Pages — fallback SPA (T73).
+# El router del cliente resuelve las rutas; el edge sirve el app shell.
+/*    /index.html   200

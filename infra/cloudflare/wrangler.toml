@@ -1,0 +1,32 @@
+# =============================================================================
+# infra/cloudflare/wrangler.toml — Cloudflare Pages (Tarea T73, Fase F10).
+#
+# Publica la SPA (React + Vite) como sitio estático. El build de Vite ya genera
+# assets con hash en `assets/[name]-[hash].js` (vite.config.ts, RNF-10.e), que
+# `dashboard/public/_headers` marca como inmutables 1 año.
+#
+# Deploy:
+#   infra/cloudflare/deploy.sh            (wrapper reproducible)
+# o directamente:
+#   npx wrangler pages deploy ../../dashboard/dist \
+#     --project-name excel-sync-gov-dashboard --branch production
+#
+# La configuración de origen (DNS, WAF, rate limit de borde y TLS 1.3) se
+# gestiona como código en `infra/terraform/cloudflare.tf`; este fichero solo
+# describe el proyecto de Pages y sus variables de build NO secretas.
+# =============================================================================
+
+name = "excel-sync-gov-dashboard"
+compatibility_date = "2025-01-01"
+pages_build_output_dir = "../../dashboard/dist"
+
+# Variables NO secretas del bundle (se exponen al cliente; §2.2.5, RNF-13.b).
+# El origen público de la API se inyecta por entorno de despliegue.
+[vars]
+VITE_ROOM_ID = "sala-central"
+
+[env.production]
+name = "excel-sync-gov-dashboard"
+
+[env.preview]
+name = "excel-sync-gov-dashboard-preview"

@@ -1,0 +1,28 @@
+{
+  "name": "Informe Operativo Comparativo — Policía de Tucumán",
+  "short_name": "Informe Operativo",
+  "description": "Informe operativo comparativo en tiempo real (solo lectura) para sala de operaciones.",
+  "lang": "es",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#04070F",
+  "theme_color": "#04070F",
+  "categories": ["business", "productivity", "security"],
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+# Grafana — aprovisionamiento de dashboards (T77).
+apiVersion: 1
+
+providers:
+  - name: excel-sync-gov
+    orgId: 1
+    folder: "Excel Sync Gov"
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: false
+    options:
+      path: /etc/grafana/dashboards
+      foldersFromFilesStructure: false
