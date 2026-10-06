@@ -138,20 +138,15 @@ def _install_stubs() -> None:
 
 
 def _load() -> types.ModuleType:
-    try:
-        from app.core import rate_limit  # noqa: F401
-
-        return rate_limit
-    except ImportError:
-        _install_stubs()
-        spec = importlib.util.spec_from_file_location(
-            "app.core.rate_limit", _BACKEND / "app" / "core" / "rate_limit.py"
-        )
-        assert spec is not None and spec.loader is not None
-        module = importlib.util.module_from_spec(spec)
-        sys.modules["app.core.rate_limit"] = module
-        spec.loader.exec_module(module)
-        return module
+    _install_stubs()
+    spec = importlib.util.spec_from_file_location(
+        "app.core.rate_limit", _BACKEND / "app" / "core" / "rate_limit.py"
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["app.core.rate_limit"] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 rate_limit = _load()

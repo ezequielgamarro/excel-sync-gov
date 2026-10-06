@@ -131,21 +131,15 @@ def _install_stubs() -> None:
 
 
 def _load_module() -> types.ModuleType:
-    try:
-        import sqlalchemy  # noqa: F401
-        from app.services import agents
-
-        return agents
-    except ImportError:
-        _install_stubs()
-        spec = importlib.util.spec_from_file_location(
-            "app.services.agents", _BACKEND / "app" / "services" / "agents.py"
-        )
-        assert spec is not None and spec.loader is not None
-        module = importlib.util.module_from_spec(spec)
-        sys.modules["app.services.agents"] = module
-        spec.loader.exec_module(module)
-        return module
+    _install_stubs()
+    spec = importlib.util.spec_from_file_location(
+        "app.services.agents", _BACKEND / "app" / "services" / "agents.py"
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["app.services.agents"] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 agents = _load_module()

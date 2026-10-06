@@ -113,20 +113,15 @@ def _install_stubs() -> None:
 
 
 def _load_replay() -> types.ModuleType:
-    try:
-        from app.services import replay  # noqa: F401
-
-        return replay
-    except ImportError:
-        _install_stubs()
-        spec = importlib.util.spec_from_file_location(
-            "app.services.replay", _BACKEND / "app" / "services" / "replay.py"
-        )
-        assert spec is not None and spec.loader is not None
-        module = importlib.util.module_from_spec(spec)
-        sys.modules["app.services.replay"] = module
-        spec.loader.exec_module(module)
-        return module
+    _install_stubs()
+    spec = importlib.util.spec_from_file_location(
+        "app.services.replay", _BACKEND / "app" / "services" / "replay.py"
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["app.services.replay"] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 replay = _load_replay()

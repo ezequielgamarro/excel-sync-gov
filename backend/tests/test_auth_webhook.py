@@ -232,17 +232,10 @@ def _load_module(name: str, filename: str) -> types.ModuleType:
 
 
 def _load_modules() -> tuple[types.ModuleType, types.ModuleType]:
-    try:
-        import fastapi  # noqa: F401
-        import sqlalchemy  # noqa: F401
-        from app.services import auth, webhook_signature
-
-        return auth, webhook_signature
-    except ImportError:
-        _install_stubs()
-        ws = _load_module("app.services.webhook_signature", "webhook_signature.py")
-        auth = _load_module("app.services.auth", "auth.py")
-        return auth, ws
+    _install_stubs()
+    ws = _load_module("app.services.webhook_signature", "webhook_signature.py")
+    auth = _load_module("app.services.auth", "auth.py")
+    return auth, ws
 
 
 auth, ws = _load_modules()
