@@ -1,6 +1,6 @@
 /**
  * Tipos del contrato de mensaje `indicators.snapshot` v1.0.0
- * (`contracts/messages/1.0.0.schema.json`, SPEC-001 §7.2–§7.7).
+ * (`docs/legacy/contracts/messages/1.0.0.schema.json`, SPEC-001 §7.2–§7.7).
  *
  * El cliente valida defensivamente la forma del mensaje (§2.2.5): rechaza el
  * evento completo ante tipos inválidos y descarta campos desconocidos.
@@ -142,11 +142,11 @@ export const KPI_ORDER: readonly KpiKey[] = [
  * Etiquetas institucionales EXACTAS de las tarjetas KPI.
  *
  * Mapeo de presentación en el frontend (no se reescribe el `label` del
- * contrato/backend): el catálogo cerrado manda sobre el texto del snapshot
+ * contrato/Supabase): el catálogo cerrado manda sobre el texto del snapshot
  * para garantizar la nomenclatura oficial de la sala.
  */
 export const KPI_LABEL: Record<KpiKey, string> = {
-  total_consultas_sifcop: "TOTAL CONSULTAS",
+  total_consultas_sifcop: "TOTAL DE INTERVENCIONES",
   personas_capturadas: "PERSONAS APREHENDIDAS POR CAUSAS JUDICIALES",
   vehiculos_secuestrados: "VEHÍCULOS SECUESTRADOS POR CAUSAS JUDICIALES",
   armas_secuestradas: "ARMAS DE FUEGO SECUESTRADAS POR CAUSAS JUDICIALES",
@@ -154,6 +154,35 @@ export const KPI_LABEL: Record<KpiKey, string> = {
 
 /** @deprecated usar `KPI_LABEL`; se conserva por compatibilidad. */
 export const KPI_FALLBACK_LABEL: Record<KpiKey, string> = KPI_LABEL;
+
+/** Claves KPI del tablero real (fuente Supabase `intervenciones_diarias`). */
+export type TableroCpiKey =
+  | "total_intervenciones"
+  | "total_positivos"
+  | "consultas_personas"
+  | "consultas_vehiculos"
+  | "consultas_armas"
+  | "consultas_elementos";
+
+/** Orden canónico de las 6 tarjetas del tablero real (fuente SQLite). */
+export const TABLERO_KPI_ORDER: readonly TableroCpiKey[] = [
+  "total_intervenciones",
+  "total_positivos",
+  "consultas_personas",
+  "consultas_vehiculos",
+  "consultas_armas",
+  "consultas_elementos",
+];
+
+/** Etiquetas institucionales de las tarjetas del tablero real. */
+export const TABLERO_KPI_LABEL: Record<TableroCpiKey, string> = {
+  total_intervenciones: "TOTAL DE INTERVENCIONES",
+  total_positivos: "TOTAL POSITIVOS",
+  consultas_personas: "CONSULTAS DE PERSONAS",
+  consultas_vehiculos: "CONSULTAS DE VEHÍCULOS",
+  consultas_armas: "CONSULTAS DE ARMAS",
+  consultas_elementos: "CONSULTAS DE ELEMENTOS",
+};
 
 /** Catálogo cerrado de 5 unidades y orden canónico territorial (RF-03.b). */
 export const UNIDAD_ORDER: readonly UnidadId[] = [
@@ -193,7 +222,7 @@ export interface RankingRow {
 
 /**
  * Orden exacto de las 20 columnas de la hoja «CONSULTAS» de la planilla oficial
- * de la Jefatura (espejo de `backend/app/models/tables.py`).
+ * de la Jefatura (espejo de la tabla `intervenciones_diarias` de Supabase).
  */
 export const CONSULTA_COLUMNS = [
   "fecha_consulta",
@@ -249,6 +278,8 @@ export interface ConsultaGroup {
   key: string;
   label: string;
   value: number;
+  /** Positivos reales del grupo (si se conocen). */
+  positivos?: number;
 }
 
 /** KPIs derivados de la agrupación de CONSULTAS. */
@@ -277,51 +308,15 @@ export interface ConsultaAggregation {
   series: Array<{ ts: string; value: number }>;
 }
 
-/**
- * Celda de una fila de la planilla de hospitales: la primera columna es texto
- * (localidad) y el resto columnas numéricas (causas delictivas).
- */
-export type HospitalCell = string | number | null;
-
-/** Fila dinámica clave → valor de la planilla de hospitales. */
-export interface HospitalRow {
-  [column: string]: HospitalCell;
-}
-
-/** Punto de la serie del gráfico de causas. */
-export interface HospitalCauseDatum {
-  causa: string;
-  cantidad: number;
-}
-
-/** Respuesta de `GET /api/hospitales/estadisticas` (columnas dinámicas). */
-export interface HospitalesEstadisticas {
-  sheet: string;
-  columns: string[];
-  rows: HospitalRow[];
-  total_rows: number;
-  /** Totales de las causas clave (claves normalizadas `snake_case`). */
-  kpis?: Record<string, number>;
-  /** Serie para el gráfico (una entrada por columna numérica, sin ceros). */
-  chartData?: HospitalCauseDatum[];
-}
-
-/** KPI derivado de una columna de la planilla de hospitales. */
-export interface HospitalKpi {
-  key: string;
-  label: string;
-  value: number;
-  /** Columna real de la que se sumó; `null` si no existe en el origen. */
-  column: string | null;
-}
-
 /** Punto (`name`/`value`) de una serie de la hoja `DASHBOARD_WEB`. */
 export interface EstadisticaItem {
   name: string;
   value: number;
+  /** Subtotal de «positivos» (fila con resultado positivo; cuenta 1). */
+  positivos?: number;
 }
 
-/** Fila del «Ranking Top 5» con variación real actual vs período anterior. */
+/** Fila del «Ranking Top 10» con variación real actual vs período anterior. */
 export interface RankingTop5Item {
   name: string;
   /** Conteo real de la ventana ACTUAL (alias de `value`). */
@@ -332,26 +327,37 @@ export interface RankingTop5Item {
   variacion_abs: number;
   /** Variación porcentual; `null` si no hay base anterior > 0 (nunca 0). */
   variacion_pct: number | null;
+  /** Subtotal de positivos (fila con resultado positivo; cuenta 1); opcional. */
+  positivos?: number;
 }
 
-/** KPIs agregados de la hoja `CONSULTAS` (enteros, NaN/vacíos → 0). */
+/** Granularidad del gráfico de flujo de consultas. */
+export type FlujoGranularidad = "hora" | "dia" | "semana" | "mes" | "anio";
+
+/** Punto del flujo: etiqueta + período actual + período anterior comparable. */
+export interface FlujoPunto {
+  label: string;
+  actual: number;
+  anterior: number;
+}
+
+/** KPIs agregados reales de las intervenciones (Supabase `intervenciones_diarias`). */
 export interface EstadisticasKpis {
-  total_consultas: number;
-  /** Aprehendidos (hoja `Positivos` o PERSONA + POSITIVO). */
-  aprehendidos?: number;
-  personas: number;
-  vehiculos: number;
-  armas: number;
-  positivos: number;
-  negativos: number;
+  total_intervenciones: number;
+  total_positivos: number;
+  consultas_personas: number;
+  consultas_vehiculos: number;
+  consultas_armas: number;
 }
 
-/** Totales reales exactos del workbook (`CONSULTAS`). */
+/** Totales reales exactos de las intervenciones (Supabase `intervenciones_diarias`). */
 export interface EstadisticasTotales {
-  total_consultas: number;
-  aprehendidos: number;
-  vehiculos_secuestrados: number;
-  armas_secuestradas: number;
+  total_intervenciones: number;
+  total_positivos: number;
+  consultas_personas: number;
+  consultas_vehiculos: number;
+  consultas_armas: number;
+  consultas_elementos?: number;
 }
 
 /** KPIs reales de un mes (`por_mes`). */
@@ -381,8 +387,8 @@ export interface IncidenteFecha {
 }
 
 /**
- * Respuesta de `GET /api/estadisticas`: series reales del workbook de la
- * Policía (`DASHBOARD_WEB` + `CONSULTAS` + `Data`/`ESTADISTICAS`).
+ * Series reales derivadas de las intervenciones de Supabase
+ * (`intervenciones_diarias`).
  *
  * Las 3 claves históricas (regionales, dependencias, resultados) conservan el
  * mismo formato; las demás alimentan Incidentes, Logística y Comparativas.
@@ -396,7 +402,7 @@ export interface EstadisticasRespuesta {
   alertas_resultados?: EstadisticaItem[];
   /** Alias de `grafico_regionales` (gráfico «Intervenciones por Unidad»). */
   intervenciones_por_unidad?: EstadisticaItem[];
-  /** Alias de `grafico_dependencias` (gráfico «Consultas por Dependencia»). */
+  /** Alias de `grafico_dependencias` (gráfico «Intervenciones por Dependencia»). */
   consultas_por_dependencia?: EstadisticaItem[];
   /** Evolución diaria estricta: `[{fecha: "DD/MM", total}]` cronológico. */
   incidentes_por_fecha?: IncidenteFecha[];
@@ -428,6 +434,16 @@ export interface EstadisticasRespuesta {
   vehiculosPorRegional?: EstadisticaItem[];
   /** Alias de `logistica_armas_por_regional` (gráfico de armas). */
   armasPorRegional?: EstadisticaItem[];
+  /** Personas aprehendidas (`det_capturas`) por unidad regional. */
+  aprehendidosPorRegional?: EstadisticaItem[];
+  /** Consultas de vehículos por tipo (Auto, Moto, Camioneta, Trafic, Otros…). */
+  vehiculosPorTipo?: EstadisticaItem[];
+  /** Consultas de armas por tipo (Pistola, Revólver, Escopeta, Fusil, Otros…). */
+  armasPorTipo?: EstadisticaItem[];
+  /** Consultas de personas por causa. */
+  personasPorCausa?: EstadisticaItem[];
+  /** Flujo de consultas, período actual vs anterior, por granularidad. */
+  flujo?: Record<FlujoGranularidad, FlujoPunto[]>;
   /** Comparativas (serie principal: totales mensuales). */
   comparativas?: EstadisticaItem[];
   /** Comparativas semanales (`Data`: mes + semana). */
@@ -442,7 +458,7 @@ export interface EstadisticasRespuesta {
   por_mes?: EstadisticasMes[];
   /** Serie `[{name: "YYYY-MM", value}]` de consultas por mes (charts). */
   consultas_por_mes?: EstadisticaItem[];
-  /** Ranking Top 5 de dependencias (orden descendente, con variación real). */
+  /** Ranking Top 10 de dependencias (orden descendente, con variación real). */
   rankingTop5?: RankingTop5Item[];
   /** Lista única/ordenada de Unidades Regionales presentes (selectores). */
   regionales_disponibles?: string[];

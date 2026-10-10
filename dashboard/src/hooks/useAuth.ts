@@ -4,13 +4,15 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
+import { supabase } from "../supabaseClient";
 import {
   getSession,
   hasCapability,
   login as loginRequest,
   logout as logoutRequest,
-  refreshAccessToken,
   subscribeAuth,
+  syncSupabaseSession,
   type AuthSession,
 } from "../auth/session";
 
@@ -34,28 +36,49 @@ export function useAuth(): AuthState {
 
   useEffect(() => {
     let cancelled = false;
+
+    // Sincroniza el estado local con una sesión de Supabase (o su ausencia).
+    const aplicar = (supaSession: Session | null) => {
+      if (cancelled) return;
+      const next = syncSupabaseSession(supaSession);
+      setSession(next);
+      setStatus((current) => {
+        if (next) return "authenticated";
+        // No pisa la comprobación inicial mientras se restaura la sesión.
+        return current === "checking" ? current : "anonymous";
+      });
+    };
+
+    // Mantiene sincronizado el estado ante login/logout/refresh forzados desde
+    // otras partes del módulo de sesión.
     const unsubscribe = subscribeAuth((next) => {
-      if (!cancelled) setSession(next);
+      if (cancelled) return;
+      setSession(next);
+      setStatus((current) => {
+        if (next) return "authenticated";
+        return current === "checking" ? current : "anonymous";
+      });
     });
 
-    (async () => {
-      if (getSession()) {
-        if (!cancelled) setStatus("authenticated");
-        return;
-      }
-      // Intenta restaurar la sesión con el refresh de la pestaña (si existe).
-      try {
-        const restored = await refreshAccessToken();
-        if (cancelled) return;
-        setStatus(restored ? "authenticated" : "anonymous");
-      } catch {
-        if (!cancelled) setStatus("anonymous");
-      }
-    })();
+    // Estado inicial: sesión persistida por Supabase (localStorage).
+    void supabase.auth.getSession().then(({ data }) => {
+      if (cancelled) return;
+      const next = syncSupabaseSession(data.session);
+      setSession(next);
+      setStatus(next ? "authenticated" : "anonymous");
+    });
+
+    // Fuente de verdad: listener nativo de Supabase Auth.
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, supaSession) => {
+      aplicar(supaSession);
+    });
 
     return () => {
       cancelled = true;
       unsubscribe();
+      subscription.unsubscribe();
     };
   }, []);
 
@@ -87,7 +110,7 @@ export function useAuth(): AuthState {
     error,
     submitting,
     // Si el token no trae el claim `capabilities`, no se decide en cliente: se
-    // deja que el backend aplique RBAC (P6) y responda 403.
+    // deja que Supabase (RLS) aplique la autorización y responda sin acceso.
     canViewLive:
       Boolean(session) && (session!.capabilities.length === 0 || hasCapability("dash.view.live")),
     login,

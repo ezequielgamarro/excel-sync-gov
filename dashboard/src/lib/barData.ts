@@ -29,6 +29,8 @@ export interface BarDatum {
   direction: KpiDirection;
   highlight: boolean;
   estado?: TurnoEstado;
+  /** Positivos reales (solo en agrupaciones de consultas). */
+  positivos?: number;
 }
 
 function directionOf(deltaAbs: number | null): KpiDirection {
@@ -96,7 +98,7 @@ export function buildTurnoBars(
  * Barras a partir de una agrupación real de CONSULTAS (Resultado/Causas/
  * Jefatura Regional/Turno). Sin base histórica asociada: `baseline` es `null`.
  */
-export function buildGroupBars(groups: ConsultaGroup[], limit = 8): BarDatum[] {
+export function buildGroupBars(groups: ConsultaGroup[], limit = 15): BarDatum[] {
   return groups.slice(0, limit).map((group) => ({
     id: group.key || group.label,
     label: group.label,
@@ -106,5 +108,6 @@ export function buildGroupBars(groups: ConsultaGroup[], limit = 8): BarDatum[] {
     deltaPct: null,
     direction: "flat",
     highlight: false,
+    positivos: group.positivos,
   }));
 }

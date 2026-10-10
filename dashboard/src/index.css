@@ -264,6 +264,32 @@
     background: transparent;
   }
 
+  /* Contenedor de gráficos altos: scroll vertical delgado sin empujar el layout. */
+  .custom-scrollbar {
+    min-width: 0;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    border-radius: 9999px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--border);
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
   /* Fondo ambiental: red de partículas en canvas (solo decorativo). */
   .cyber-backdrop {
     position: fixed;
@@ -312,5 +338,57 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* Impresión / PDF: oculta la navegación y evita cortes dentro de paneles. */
+@media print {
+  header,
+  aside,
+  nav,
+  button,
+  [data-no-print] {
+    display: none !important;
+  }
+
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  .panel,
+  table,
+  tr,
+  svg {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Informe de impresión: solo se imprime la hoja del informe. */
+  @page {
+    size: A4 landscape;
+    margin: 8mm;
+  }
+
+  body.informe-abierto #root {
+    display: none !important;
+  }
+
+  body.informe-abierto #informe-overlay {
+    position: static !important;
+    overflow: visible !important;
+    background: none !important;
+    backdrop-filter: none !important;
+  }
+
+  body.informe-abierto .informe-hoja {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    margin: 0 !important;
+  }
+
+  .informe-bloque {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 }

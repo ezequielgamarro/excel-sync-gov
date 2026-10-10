@@ -43,7 +43,9 @@ describe("RankingTable (RF-04, T66)", () => {
     );
 
     render(
-      <RankingTable dependencias={items.slice(0, 5).map((d, i) => ({ ...d, puesto: i + 1 }))} />,
+      <RankingTable
+        dependencias={items.filter((_, i) => i < 5).map((d, i) => ({ ...d, puesto: i + 1 }))}
+      />,
     );
     const table = screen.getByRole("table");
     const headers = within(table)

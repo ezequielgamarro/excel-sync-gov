@@ -3,8 +3,7 @@
  * CA-02.1/02.2/02.7, CA-03.x, CA-04.x, CA-05.x).
  *
  * Arranca la SPA en `http://localhost:5173` si no hay un `E2E_BASE_URL`
- * (despliegue/preview). Los tests que requieren backend real usan `E2E_API_URL`
- * y se auto-omiten si no está definida.
+ * (despliegue/preview).
  */
 
 import { defineConfig, devices } from "@playwright/test";

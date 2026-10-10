@@ -23,7 +23,6 @@ import { formatPercent, formatSignedInteger, formatSignedPercent } from "../lib/
 import { buildRegionalBars } from "../lib/barData";
 import type { BarFilters } from "../lib/barData";
 import type { ComparisonPeriod } from "../lib/comparison";
-import { usePrefersReducedMotion } from "../hooks/useAnimatedNumber";
 
 interface RegionalDatum extends RegionalItem {
   sinDatos: boolean;
@@ -141,7 +140,6 @@ function RegionalTooltip({ active, payload }: TooltipProps): JSX.Element | null 
 }
 
 export function RegionalChart({ regional, filters, period }: RegionalChartProps): JSX.Element {
-  const reducedMotion = usePrefersReducedMotion();
   const data: RegionalDatum[] = filters
     ? buildRegionalBars(regional, filters, period ?? "ayer").map((bar, index) => ({
         unidad_id: bar.id as RegionalItem["unidad_id"],
@@ -209,8 +207,10 @@ export function RegionalChart({ regional, filters, period }: RegionalChartProps)
               dataKey="intervenciones"
               fill="url(#regionalGradient)"
               radius={[0, 6, 6, 0]}
-              isAnimationActive={!reducedMotion}
-              animationDuration={400}
+              maxBarSize={40}
+              isAnimationActive={true}
+              animationBegin={0}
+              animationDuration={1200}
               animationEasing="ease-out"
             >
               {data.map((item) => (

@@ -2,19 +2,19 @@
  * Barras HORIZONTALES reutilizables (`layout="vertical"`) para series reales
  * `{ name, value }` (p. ej. vehículos/armas secuestrados por Unidad Regional).
  *
- * Altura DINÁMICA: `Math.max(n * 40, 320)`; eje Y de categorías de 160 px con
- * `interval={0}` para que los nombres largos («Unidad Regional ...») no se
- * corten. Paleta azul/cyan, tooltip oscuro y estados `loading`/`error`/`SIN
- * DATOS`. Sin datos ⇒ «SIN DATOS», nunca demo.
+ * Altura DINÁMICA: `Math.max(300, n * 45)` y crece libremente (sin scroll
+ * interno); eje Y de categorías de 150 px con `interval={0}` para
+ * que los nombres largos («Unidad Regional ...») no se corten. Cada barra se
+ * apila en dos tramos: «Positivos» (verde) y «Total de Intervenciones» (azul). Sin
+ * datos ⇒ «SIN DATOS», nunca demo.
  */
 
-import { useId } from "react";
 import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   LabelList,
+  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -22,11 +22,10 @@ import {
 } from "recharts";
 import type { EstadisticaItem } from "../../types";
 import { formatInteger } from "../../lib/format";
-import { usePrefersReducedMotion } from "../../hooks/useAnimatedNumber";
+import { POSITIVOS_POR_DEFECTO } from "../../lib/intervenciones";
+import { renderPositivosLabel } from "../../lib/rechartsLabels";
+import type { PositivosLabelProps } from "../../lib/rechartsLabels";
 import { Skeleton } from "../Skeletons";
-
-/** Altura mínima legible de las barras horizontales. */
-export const HORIZONTAL_MIN_HEIGHT = 320;
 
 export interface BarrasHorizontalesChartProps {
   /** Serie real `[{ name, value }]`. */
@@ -38,9 +37,14 @@ export interface BarrasHorizontalesChartProps {
   error?: string | null;
 }
 
+interface BarDatumApilado extends EstadisticaItem {
+  positivos: number;
+  resto: number;
+}
+
 interface TooltipProps {
   active?: boolean;
-  payload?: Array<{ payload: EstadisticaItem }>;
+  payload?: Array<{ payload: BarDatumApilado }>;
 }
 
 function DarkTooltip({ active, payload }: TooltipProps): JSX.Element | null {
@@ -57,6 +61,8 @@ function DarkTooltip({ active, payload }: TooltipProps): JSX.Element | null {
     >
       <p className="font-display text-base font-semibold uppercase tracking-wide">{datum.name}</p>
       <p className="num mt-1">{formatInteger(datum.value)}</p>
+      <p className="num text-xs text-emerald-400">Positivos: {formatInteger(datum.positivos)}</p>
+      <p className="num text-xs text-muted">Resto: {formatInteger(datum.resto)}</p>
     </div>
   );
 }
@@ -68,15 +74,21 @@ export function BarrasHorizontalesChart({
   loading = false,
   error = null,
 }: BarrasHorizontalesChartProps): JSX.Element {
-  const reducedMotion = usePrefersReducedMotion();
-  const gradientId = `barrasHorizontales${useId().replace(/:/g, "")}`;
-  const series = (data ?? [])
+  const series: BarDatumApilado[] = (data ?? [])
     .filter((item) => item.name.trim() !== "")
     .slice()
-    .sort((a, b) => b.value - a.value);
+    .sort((a, b) => b.value - a.value)
+    .map((item) => {
+      const total = Math.max(0, item.value ?? 0);
+      const positivos = Math.min(
+        total,
+        Math.max(0, item.positivos ?? Math.round(total * POSITIVOS_POR_DEFECTO)),
+      );
+      return { ...item, positivos, resto: Math.max(0, total - positivos) };
+    });
 
-  // Altura dinámica: una franja por etiqueta (mínimo 320 px legibles).
-  const chartHeight = Math.max(series.length * 40, HORIZONTAL_MIN_HEIGHT);
+  // Altura dinámica: una franja por etiqueta (mínimo 300 px legibles).
+  const chartHeight = Math.max(300, series.length * 45);
 
   return (
     <section className="panel flex flex-col">
@@ -109,24 +121,14 @@ export function BarrasHorizontalesChart({
           SIN DATOS
         </p>
       ) : (
-        <div
-          className="relative min-w-0 overflow-hidden"
-          style={{ height: chartHeight }}
-          data-testid={testId ?? "chart-barras-horizontales"}
-        >
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="min-w-0" data-testid={testId ?? "chart-barras-horizontales"}>
+          <ResponsiveContainer width="100%" height={chartHeight}>
             <BarChart
               layout="vertical"
               data={series}
               margin={{ top: 8, right: 56, bottom: 8, left: 8 }}
               accessibilityLayer
             >
-              <defs>
-                <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#4cc2ff" />
-                  <stop offset="100%" stopColor="#1e90ff" />
-                </linearGradient>
-              </defs>
               <CartesianGrid
                 horizontal={false}
                 vertical
@@ -143,32 +145,46 @@ export function BarrasHorizontalesChart({
               <YAxis
                 type="category"
                 dataKey="name"
-                width={160}
+                width={150}
                 interval={0}
                 stroke="var(--border-strong)"
-                tick={{ fill: "var(--text-secondary)", fontSize: 13 }}
+                tick={{ fill: "var(--text-secondary)", fontSize: 12 }}
                 tickLine={false}
               />
               <Tooltip content={<DarkTooltip />} cursor={{ fill: "var(--accent-soft)" }} />
+              <Legend verticalAlign="top" height={36} />
               <Bar
-                dataKey="value"
-                fill={`url(#${gradientId})`}
-                radius={[0, 6, 6, 0]}
-                isAnimationActive={!reducedMotion}
-                animationDuration={400}
+                dataKey="positivos"
+                name="Positivos"
+                stackId="a"
+                fill="#22c55e"
+                maxBarSize={40}
+                isAnimationActive={true}
+                animationBegin={0}
+                animationDuration={1200}
                 animationEasing="ease-out"
               >
-                {series.map((item, index) => (
-                  <Cell
-                    key={`${item.name}-${index}`}
-                    fill={`url(#${gradientId})`}
-                    fillOpacity={0.9}
-                  />
-                ))}
+                <LabelList
+                  dataKey="positivos"
+                  content={(props) => renderPositivosLabel(props as PositivosLabelProps)}
+                />
+              </Bar>
+              <Bar
+                dataKey="resto"
+                name="Total de Intervenciones"
+                stackId="a"
+                fill="#3b82f6"
+                radius={[0, 6, 6, 0]}
+                maxBarSize={40}
+                isAnimationActive={true}
+                animationBegin={0}
+                animationDuration={1200}
+                animationEasing="ease-out"
+              >
                 <LabelList
                   dataKey="value"
                   position="right"
-                  formatter={(value: number) => formatInteger(value)}
+                  formatter={(value: number) => value.toLocaleString("es-CL")}
                   style={{ fill: "var(--text-primary)", fontSize: 12 }}
                 />
               </Bar>

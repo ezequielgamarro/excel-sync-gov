@@ -8,13 +8,60 @@
  * muestra «SIN DATOS».
  */
 
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  LabelList,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import type { IncidenteFecha } from "../../types";
 import { formatInteger } from "../../lib/format";
-import { usePrefersReducedMotion } from "../../hooks/useAnimatedNumber";
 import { Skeleton } from "../Skeletons";
 
 export const EVOLUCION_DIARIA_COLOR = "#4cc2ff";
+
+/** Con más días que este umbral, los números sobre las barras se giran en vertical. */
+const UMBRAL_ETIQUETA_VERTICAL = 14;
+
+interface EtiquetaProps {
+  x?: number;
+  y?: number;
+  width?: number;
+  value?: number;
+  vertical: boolean;
+}
+
+/** Número sobre la barra; en vertical cuando hay muchos días para que no se choquen. */
+function EtiquetaTotal({
+  x = 0,
+  y = 0,
+  width = 0,
+  value = 0,
+  vertical,
+}: EtiquetaProps): JSX.Element {
+  const cx = x + width / 2;
+  const texto = formatInteger(Number(value));
+  return vertical ? (
+    <text
+      x={cx}
+      y={y - 6}
+      fill="var(--text-primary)"
+      fontSize={11}
+      textAnchor="start"
+      transform={`rotate(-90 ${cx} ${y - 6})`}
+    >
+      {texto}
+    </text>
+  ) : (
+    <text x={cx} y={y - 6} fill="var(--text-primary)" fontSize={12} textAnchor="middle">
+      {texto}
+    </text>
+  );
+}
 
 export interface EvolucionDiariaChartProps {
   /** Incidentes por día (`{ fecha: "DD/MM", total }`), orden cronológico. */
@@ -63,8 +110,8 @@ export function EvolucionDiariaChart({
   error = null,
   title = "Evolución Diaria de Incidentes",
 }: EvolucionDiariaChartProps): JSX.Element {
-  const reducedMotion = usePrefersReducedMotion();
   const rows = (data ?? []).filter((item) => item && String(item.fecha).trim() !== "");
+  const vertical = rows.length > UMBRAL_ETIQUETA_VERTICAL;
 
   return (
     <section className="panel flex h-full min-h-0 flex-col overflow-hidden">
@@ -94,13 +141,15 @@ export function EvolucionDiariaChart({
           data-testid="chart-evolucion-diaria"
         >
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={rows} margin={{ top: 16, right: 16, bottom: 8, left: 0 }}>
+            <BarChart data={rows} margin={{ top: vertical ? 40 : 24, right: 16, bottom: 8, left: 0 }}>
               <CartesianGrid stroke="var(--border)" strokeDasharray="2 6" vertical={false} />
               <XAxis
                 dataKey="fecha"
                 stroke="var(--border-strong)"
                 tick={{ fill: "var(--text-secondary)", fontSize: 12 }}
                 tickLine={false}
+                interval="preserveStartEnd"
+                minTickGap={8}
               />
               <YAxis
                 stroke="var(--border-strong)"
@@ -115,8 +164,21 @@ export function EvolucionDiariaChart({
                 name="INCIDENTES"
                 fill={EVOLUCION_DIARIA_COLOR}
                 radius={[4, 4, 0, 0]}
-                isAnimationActive={!reducedMotion}
-              />
+                isAnimationActive={true}
+                animationBegin={0}
+                animationDuration={1200}
+                animationEasing="ease-out"
+              >
+                <LabelList
+                  dataKey="total"
+                  content={(props) => (
+                    <EtiquetaTotal
+                      {...(props as Omit<EtiquetaProps, "vertical">)}
+                      vertical={vertical}
+                    />
+                  )}
+                />
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>

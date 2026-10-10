@@ -55,14 +55,14 @@ function schemaMajor(version: string): number {
   return Number.isFinite(major) ? major : -1;
 }
 
-/** Normaliza el ranking: desc por intervenciones, desempate alfabético, ≤ 5. */
+/** Normaliza el ranking: desc por intervenciones, desempate alfabético, ≤ 10. */
 export function normalizeRanking(items: RankingItem[]): RankingItem[] {
   return [...items]
     .sort((a, b) => {
       if (b.intervenciones !== a.intervenciones) return b.intervenciones - a.intervenciones;
       return a.comisaria.localeCompare(b.comisaria, "es");
     })
-    .slice(0, 5)
+    .slice(0, 10)
     .map((item, index) => ({ ...item, puesto: index + 1 }));
 }
 
@@ -203,7 +203,7 @@ export function validateSnapshotMessage(raw: unknown): ValidateResult {
       },
   );
 
-  // --- Ranking: hasta 5, orden determinista. ---
+  // --- Ranking: hasta 10, orden determinista. ---
   const rankingRaw = payload.ranking;
   const depRaw =
     isRecord(rankingRaw) && Array.isArray(rankingRaw.dependencias) ? rankingRaw.dependencias : [];
@@ -254,7 +254,7 @@ export function validateSnapshotMessage(raw: unknown): ValidateResult {
       kpis,
       regional,
       turnos,
-      ranking: { top_n: 5, dependencias: normalizeRanking(dependencias) },
+      ranking: { top_n: 10, dependencias: normalizeRanking(dependencias) },
       freshness: {
         last_event_ts:
           typeof freshnessRaw.last_event_ts === "string" ? freshnessRaw.last_event_ts : "",

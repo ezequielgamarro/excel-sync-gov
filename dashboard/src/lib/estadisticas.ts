@@ -1,5 +1,5 @@
 /**
- * Adaptadores entre las series `{name, value}` de `GET /api/estadisticas` y la
+ * Adaptadores entre las series `{name, value}` derivadas de Supabase y la
  * forma que consumen los gráficos Recharts del panel (`ConsultaGroup` para
  * barras/donas y `{ts, value}` para la línea temporal).
  *
@@ -18,7 +18,7 @@ export function aGrupos(items: EstadisticaItem[] | undefined | null): ConsultaGr
   }));
 }
 
-/** Turnos operativos de `incidentes_turno_por_dia` (claves del backend). */
+/** Turnos operativos de `incidentes_turno_por_dia` (claves de Supabase). */
 export type TurnoDiaKey = "mañana" | "tarde" | "noche";
 
 /**

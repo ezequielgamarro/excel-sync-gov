@@ -1,32 +1,27 @@
 /**
  * DashboardScreen — conexión de datos de Incidentes/Logística/Estadísticas.
  *
- * La fuente PRIMARIA es `useEstadisticas` (`GET /api/estadisticas`, Excel real
- * traducido). Con `useConsultas` vacío, los charts deben renderizar los arrays
- * reales; «SIN DATOS» sólo cuando ambos orígenes están vacíos.
+ * La fuente es `useIntervenciones` (Supabase `intervenciones_diarias`). Los
+ * charts deben renderizar los arrays reales derivados; «SIN DATOS» sólo cuando
+ * no hay datos.
  *
- * Los KPIs superiores se alimentan de `estadisticas.totales` (sin snapshot
+ * Los KPIs superiores se alimentan de `intervenciones.totales` (sin snapshot
  * semilla) y muestran el footer de comparación según el período elegido.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
-import type { UseEstadisticasResult } from "../hooks/useEstadisticas";
-import type { UseConsultasResult } from "../hooks/useConsultas";
+import type { AuthSession } from "../auth/session";
+import { fireEvent, render, screen } from "@testing-library/react";
+import type { UseIntervencionesResult } from "../hooks/useIntervenciones";
 import type { UseDashboardResult } from "../hooks/useDashboard";
 
 const mocks = vi.hoisted(() => ({
-  estadisticas: {
+  intervenciones: {
     fase: "listo",
     datos: null,
     error: null,
     refetch: () => {},
-  } as UseEstadisticasResult,
-  consultas: {
-    aggregation: null,
-    loading: false,
-    error: null,
-  } as UseConsultasResult,
+  } as UseIntervencionesResult,
   dashboard: {
     state: {
       snapshot: null,
@@ -40,37 +35,53 @@ const mocks = vi.hoisted(() => ({
     now: Date.now(),
     lastSyncAt: Date.now(),
   } as unknown as UseDashboardResult,
-  /** Último rango pasado a `useEstadisticas` (verifica el refetch por período). */
-  ultimoRango: undefined as string | undefined,
 }));
 
-vi.mock("../hooks/useEstadisticas", () => ({
-  useEstadisticas: (rango?: string) => {
-    mocks.ultimoRango = rango;
-    return mocks.estadisticas;
+vi.mock("../hooks/useIntervenciones", () => ({
+  useIntervenciones: () => mocks.intervenciones,
+}));
+vi.mock("../hooks/useDashboard", () => ({ useDashboard: () => mocks.dashboard }));
+// `HistorialRegistros` importa el cliente real; en tests no hay env de Supabase,
+// así que se mockea para evitar `createClient("", "")` (supabaseUrl required).
+vi.mock("../supabaseClient", () => ({
+  supabase: {
+    from: () => ({
+      select: () => ({
+        order: () => ({
+          range: () => Promise.resolve({ data: [], count: 0, error: null }),
+        }),
+      }),
+    }),
   },
 }));
-vi.mock("../hooks/useConsultas", () => ({ useConsultas: () => mocks.consultas }));
-vi.mock("../hooks/useDashboard", () => ({ useDashboard: () => mocks.dashboard }));
 
 import { DashboardScreen } from "./DashboardScreen";
 import { ComparisonProvider } from "../state/ComparisonContext";
 import { FiltersProvider } from "../state/FiltersContext";
+
+const SESION_ADMIN: AuthSession = {
+  sub: "admin-test",
+  accessToken: "token",
+  refreshToken: null,
+  csrfToken: null,
+  expiresAt: Date.now() + 3_600_000,
+  capabilities: ["dash.view.live"],
+  roles: ["platform-admin"],
+};
 
 function renderScreen(hash: string): void {
   window.location.hash = hash;
   render(
     <ComparisonProvider>
       <FiltersProvider>
-        <DashboardScreen session={null} onLogout={() => {}} />
+        <DashboardScreen session={SESION_ADMIN} onLogout={() => {}} />
       </FiltersProvider>
     </ComparisonProvider>,
   );
 }
 
 beforeEach(() => {
-  mocks.estadisticas = { fase: "listo", datos: null, error: null, refetch: () => {} };
-  mocks.consultas = { aggregation: null, loading: false, error: null };
+  mocks.intervenciones = { fase: "listo", datos: null, error: null, refetch: () => {} };
 });
 
 afterEach(() => {
@@ -79,13 +90,21 @@ afterEach(() => {
 
 describe("DashboardScreen · fuente primaria estadísticas", () => {
   it("Incidentes: linea y barras usan las series reales de estadisticas", () => {
-    mocks.estadisticas = {
+    mocks.intervenciones = {
       fase: "listo",
       datos: {
         estado: "exito",
         incidentes_por_dia: [
           { name: "2026-10-05", value: 3 },
           { name: "2026-10-06", value: 8 },
+        ],
+        incidentes_por_fecha: [
+          { fecha: "05/10", total: 3 },
+          { fecha: "06/10", total: 8 },
+        ],
+        incidentes_por_hora: [
+          { name: "10:00", value: 3 },
+          { name: "11:00", value: 8 },
         ],
         intervenciones_por_unidad: [{ name: "Unidad Regional Norte", value: 42 }],
       },
@@ -95,26 +114,62 @@ describe("DashboardScreen · fuente primaria estadísticas", () => {
 
     renderScreen("#/incidentes");
 
+    // Flujo de Incidentes: flujo de consultas + evolución diaria.
     expect(screen.getByTestId("chart-realtime")).toBeInTheDocument();
-    expect(screen.getByTestId("chart-columns-unidad")).toBeInTheDocument();
+    expect(screen.getByTestId("chart-evolucion-diaria")).toBeInTheDocument();
+    // «Intervenciones por Unidad Regional» ya no está en Flujo de Incidentes.
+    expect(screen.queryByTestId("chart-columns-unidad")).toBeNull();
     expect(screen.queryByText("SIN DATOS")).toBeNull();
   });
 
+  it("Estadística Total CISOP: KPIs en gráficos y gráfico por Unidad Regional", () => {
+    mocks.intervenciones = {
+      fase: "listo",
+      datos: {
+        estado: "exito",
+        totales: {
+          total_intervenciones: 100,
+          total_positivos: 30,
+          consultas_personas: 40,
+          consultas_vehiculos: 30,
+          consultas_armas: 20,
+          consultas_elementos: 10,
+        },
+        totales_previos: {
+          total_intervenciones: 80,
+          total_positivos: 20,
+          consultas_personas: 30,
+          consultas_vehiculos: 25,
+          consultas_armas: 15,
+          consultas_elementos: 10,
+        },
+        intervenciones_por_unidad: [{ name: "U.R. Norte", value: 42 }],
+      },
+      error: null,
+      refetch: () => {},
+    };
+
+    renderScreen("#/comparativas");
+
+    expect(screen.getByTestId("chart-kpi-comparacion")).toBeInTheDocument();
+    expect(screen.getByTestId("chart-kpi-tipos")).toBeInTheDocument();
+    expect(screen.getByTestId("chart-columns-unidad")).toBeInTheDocument();
+  });
+
   it("Logística: barras horizontales reales de vehículos y armas (sin donut ni turnos)", () => {
-    mocks.estadisticas = {
+    mocks.intervenciones = {
       fase: "listo",
       datos: {
         estado: "exito",
         vehiculosPorRegional: [{ name: "Unidad Regional Sur", value: 4 }],
         armasPorRegional: [{ name: "Unidad Regional Norte", value: 2 }],
         distribucion_incidentes: [{ name: "VEHICULO", value: 4 }],
-        kpis: {
-          total_consultas: 9,
-          personas: 1,
-          vehiculos: 4,
-          armas: 2,
-          positivos: 6,
-          negativos: 3,
+        totales: {
+          total_intervenciones: 9,
+          total_positivos: 6,
+          consultas_personas: 1,
+          consultas_vehiculos: 4,
+          consultas_armas: 2,
         },
       },
       error: null,
@@ -127,17 +182,18 @@ describe("DashboardScreen · fuente primaria estadísticas", () => {
     expect(screen.getByTestId("chart-logistica-armas")).toBeInTheDocument();
     expect(screen.queryByTestId("chart-donut")).toBeNull();
     expect(screen.queryByText("Incidentes por Turno Operativo")).toBeNull();
-    expect(screen.getByText("Vehículos secuestrados").parentElement?.textContent).toContain("4");
-    expect(screen.getByText("Armas secuestradas").parentElement?.textContent).toContain("2");
+    expect(screen.getByText("Consultas de Vehículos").parentElement?.textContent).toContain("4");
+    expect(screen.getByText("Consultas de Armas").parentElement?.textContent).toContain("2");
   });
 
   it("Estadísticas: panel maestro renderiza TODOS los gráficos del sistema", () => {
-    mocks.estadisticas = {
+    mocks.intervenciones = {
       fase: "listo",
       datos: {
         estado: "exito",
         distribucion_incidentes: [{ name: "VEHICULO", value: 6 }],
         incidentes_por_dia: [{ name: "2026-10-06", value: 2 }],
+        incidentes_por_hora: [{ name: "08:00", value: 2 }],
         incidentes_por_fecha: [{ fecha: "06/10", total: 2 }],
         intervenciones_por_unidad: [{ name: "Unidad Regional Norte", value: 42 }],
         vehiculosPorRegional: [{ name: "Unidad Regional Sur", value: 4 }],
@@ -149,6 +205,7 @@ describe("DashboardScreen · fuente primaria estadísticas", () => {
             value: 40,
             variacion_abs: 5,
             variacion_pct: 12.5,
+            positivos: 7,
           },
         ],
         grafico_regionales: [{ name: "Unidad Regional Norte", value: 10 }],
@@ -172,41 +229,22 @@ describe("DashboardScreen · fuente primaria estadísticas", () => {
     expect(screen.getByTestId("chart-estadisticas-regionales")).toBeInTheDocument();
     expect(screen.getByTestId("chart-estadisticas-dependencias")).toBeInTheDocument();
     expect(screen.getByTestId("chart-estadisticas-resultados")).toBeInTheDocument();
-    // Selector dinámico de Unidad Regional (nombres oficiales del backend).
-    expect(screen.getByRole("option", { name: "Unidad Regional Norte" })).toBeInTheDocument();
+    // Selector dinámico de Unidad Regional (nombres oficiales de Supabase).
+    // Ahora está en la cabecera (Header). Usamos getAllByRole porque hay un solo
+    // FilterBar en la cabecera; getAllByRole evita el error si hubiera duplicados.
+    const unidadOptions = screen.getAllByRole("option", { name: "Unidad Regional Norte" });
+    expect(unidadOptions.length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByLabelText(/turno/i)).toBeNull();
   });
 
-  it("Estadísticas: los botones de período cambian el rango del fetch", () => {
-    mocks.estadisticas = {
-      fase: "listo",
-      datos: { estado: "exito" },
-      error: null,
-      refetch: () => {},
-    };
-
-    renderScreen("#/estadisticas");
-
-    expect(mocks.ultimoRango).toBe("ayer");
-    // El panel de Estadísticas ya no tiene su propio "Comparar vs"; se usa el
-    // control GLOBAL de la cabecera (aria-label por defecto «Comparar versus»).
-    const panel = screen.getByRole("radiogroup", { name: "Comparar versus" });
-    fireEvent.click(within(panel).getByRole("radio", { name: "Mes anterior" }));
-    expect(mocks.ultimoRango).toBe("mes");
-    expect(within(panel).getByRole("radio", { name: "Mes anterior" })).toHaveAttribute(
-      "aria-checked",
-      "true",
-    );
-  });
-
-  it("Resumen: Evolución Diaria deriva el total por fecha desde incidentes_turno_por_dia", () => {
-    mocks.estadisticas = {
+  it("Resumen: Evolución Diaria usa la serie real incidentes_por_fecha", () => {
+    mocks.intervenciones = {
       fase: "listo",
       datos: {
         estado: "exito",
-        incidentes_turno_por_dia: [
-          { fecha: "01/10", mañana: 3, tarde: 1, noche: 2 },
-          { fecha: "02/10", mañana: 2, tarde: 4, noche: 5 },
+        incidentes_por_fecha: [
+          { fecha: "01/10", total: 6 },
+          { fecha: "02/10", total: 11 },
         ],
       },
       error: null,
@@ -221,15 +259,16 @@ describe("DashboardScreen · fuente primaria estadísticas", () => {
   });
 
   it("Resumen: KPIs con TOTALES reales y footer dinámico según el período", () => {
-    mocks.estadisticas = {
+    mocks.intervenciones = {
       fase: "listo",
       datos: {
         estado: "exito",
         totales: {
-          total_consultas: 365,
-          aprehendidos: 10,
-          vehiculos_secuestrados: 4,
-          armas_secuestradas: 2,
+          total_intervenciones: 365,
+          total_positivos: 10,
+          consultas_personas: 4,
+          consultas_vehiculos: 2,
+          consultas_armas: 1,
         },
       },
       error: null,
@@ -238,7 +277,7 @@ describe("DashboardScreen · fuente primaria estadísticas", () => {
 
     renderScreen("#/resumen");
 
-    const card = document.querySelector<HTMLElement>('[data-kpi="total_consultas_sifcop"]');
+    const card = document.querySelector<HTMLElement>('[data-kpi="total_intervenciones"]');
     expect(card?.textContent).toContain("365");
     expect(document.body.textContent).not.toContain("184.732");
     expect(screen.getAllByText("— sin Ayer").length).toBeGreaterThan(0);
@@ -248,8 +287,49 @@ describe("DashboardScreen · fuente primaria estadísticas", () => {
     expect(screen.queryByText("— sin Ayer")).toBeNull();
   });
 
+  it("Resumen: KPIs usan totales derivados de Supabase y variación real (sin 'N/A')", () => {
+    mocks.intervenciones = {
+      fase: "listo",
+      datos: {
+        estado: "exito",
+        totales: {
+          total_intervenciones: 2579,
+          total_positivos: 180,
+          consultas_personas: 420,
+          consultas_vehiculos: 310,
+          consultas_armas: 75,
+          consultas_elementos: 12,
+        },
+        totales_previos: {
+          total_intervenciones: 2000,
+          total_positivos: 150,
+          consultas_personas: 300,
+          consultas_vehiculos: 200,
+          consultas_armas: 50,
+          consultas_elementos: 10,
+        },
+      },
+      error: null,
+      refetch: () => {},
+    };
+
+    renderScreen("#/resumen");
+
+    const card = document.querySelector<HTMLElement>('[data-kpi="total_intervenciones"]');
+    expect(card?.textContent).toContain("2.579");
+    expect(card?.textContent).toContain("2.000");
+    expect(
+      document.querySelector<HTMLElement>('[data-kpi="consultas_armas"]')?.textContent,
+    ).toContain("75");
+    expect(
+      document.querySelector<HTMLElement>('[data-kpi="consultas_elementos"]')?.textContent,
+    ).toContain("12");
+    expect(document.body.textContent).not.toContain("N/A");
+    expect(document.body.textContent).not.toContain("— sin Ayer");
+  });
+
   it("Resumen: Ranking Top 5 usa datos.rankingTop5 (no el snapshot semilla)", () => {
-    mocks.estadisticas = {
+    mocks.intervenciones = {
       fase: "listo",
       datos: {
         estado: "exito",
@@ -260,6 +340,7 @@ describe("DashboardScreen · fuente primaria estadísticas", () => {
             value: 8420,
             variacion_abs: 20,
             variacion_pct: 0.24,
+            positivos: 15,
           },
           {
             name: "Comisaría Primera",
@@ -267,6 +348,7 @@ describe("DashboardScreen · fuente primaria estadísticas", () => {
             value: 120,
             variacion_abs: 0,
             variacion_pct: null,
+            positivos: 0,
           },
         ],
       },

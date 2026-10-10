@@ -1,8 +1,9 @@
+import { useId } from "react";
 import { useFilters } from "../../state/FiltersContext";
 import type { RangoFilter } from "../charts/filters";
 
 /**
- * Fallback estático SÓLO si el backend no devolvió `regionales_disponibles`.
+ * Fallback estático SÓLO si Supabase no devolvió `regionales_disponibles`.
  * El catálogo real (nombres oficiales) llega por el contexto de filtros.
  */
 const UNIDAD_OPTIONS_FALLBACK: ReadonlyArray<{ value: string; label: string }> = [
@@ -30,12 +31,13 @@ export interface FilterBarProps {
 /** Filtros globales (unidad regional dinámica, rango) consumidos del contexto. */
 export function FilterBar({ layout = "stacked" }: FilterBarProps): JSX.Element {
   const { filters, setFilter, unidadesDisponibles } = useFilters();
+  const baseId = useId();
   const fieldClass =
     layout === "inline"
       ? "flex items-center gap-1 whitespace-nowrap text-[11px] uppercase tracking-wide text-muted"
       : "flex flex-col gap-1 text-[11px] uppercase tracking-wide text-muted";
 
-  // Valor = nombre oficial del backend; primera opción «Todas». Fallback estático
+  // Valor = nombre oficial de Supabase; primera opción «Todas». Fallback estático
   // únicamente cuando la lista dinámica viene vacía.
   const unidadOptions: ReadonlyArray<{ value: string; label: string }> =
     unidadesDisponibles.length > 0
@@ -45,12 +47,15 @@ export function FilterBar({ layout = "stacked" }: FilterBarProps): JSX.Element {
         ]
       : [{ value: "TODAS", label: "Todas" }, ...UNIDAD_OPTIONS_FALLBACK];
 
+  const unidadId = `${baseId}-filter-unidad`;
+  const rangoId = `${baseId}-filter-rango`;
+
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <label htmlFor="filter-unidad" className={fieldClass}>
+      <label htmlFor={unidadId} className={fieldClass}>
         Unidad Regional
         <select
-          id="filter-unidad"
+          id={unidadId}
           className={SELECT_CLASS}
           value={filters.unidad}
           onChange={(event) => setFilter("unidad", event.target.value)}
@@ -63,10 +68,10 @@ export function FilterBar({ layout = "stacked" }: FilterBarProps): JSX.Element {
         </select>
       </label>
 
-      <label htmlFor="filter-rango" className={fieldClass}>
+      <label htmlFor={rangoId} className={fieldClass}>
         Rango
         <select
-          id="filter-rango"
+          id={rangoId}
           className={SELECT_CLASS}
           value={filters.rango}
           onChange={(event) => setFilter("rango", event.target.value)}

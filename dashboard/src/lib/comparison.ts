@@ -20,6 +20,14 @@ export const COMPARISON_LABEL: Record<ComparisonPeriod, string> = {
   anio: "Año anterior",
 };
 
+/** Etiqueta del período en curso, par de `COMPARISON_LABEL`. */
+export const CURRENT_LABEL: Record<ComparisonPeriod, string> = {
+  ayer: "Hoy",
+  semana: "Semana actual",
+  mes: "Mes actual",
+  anio: "Año actual",
+};
+
 /** `true` sólo si la fuente tiene histórico real para el período elegido. */
 export function hasRealComparison(period: ComparisonPeriod): boolean {
   return period === "ayer";

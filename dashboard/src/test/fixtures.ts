@@ -113,7 +113,7 @@ export function makeSnapshot(overrides: Record<string, unknown> = {}): Record<st
         },
       ],
       ranking: {
-        top_n: 5,
+        top_n: 10,
         dependencias: [
           {
             puesto: 1,

@@ -8,11 +8,20 @@ export interface AdminSection {
 
 export const ADMIN_SECTIONS: readonly AdminSection[] = [
   { id: "resumen", label: "Resumen General" },
-  { id: "incidentes", label: "Incidentes Operativos" },
-  { id: "logistica", label: "Logística / Vehículos" },
-  { id: "estadisticas", label: "Estadísticas / Distribución" },
-  { id: "hospitales", label: "Ingresos Hospitalarios" },
-  { id: "comparativas", label: "Comparativas" },
+  { id: "logistica", label: "Resumen Individual" },
+  { id: "incidentes", label: "Flujo de Incidentes" },
+  { id: "comparativas", label: "Estadística Total CISOP" },
+  { id: "estadisticas", label: "Estadística / Distribución" },
+  { id: "carga", label: "Carga de Datos" },
+  { id: "historial", label: "Historial" },
+];
+
+/** Secciones que solo existen para ciertos roles (ver `auth/roles.ts`). */
+export const EXTRA_SECTIONS: readonly AdminSection[] = [
+  { id: "monitor", label: "Monitor" },
+  { id: "empleados", label: "Empleados" },
+  { id: "auditoria", label: "Auditoría" },
+  { id: "usuarios", label: "Usuarios" },
 ];
 
 function SectionIcon({ id }: { id: string }): JSX.Element {
@@ -54,6 +63,46 @@ function SectionIcon({ id }: { id: string }): JSX.Element {
           <path d="M12 16.5h.01" />
         </svg>
       );
+    case "carga":
+      // Portapapeles con lápiz: carga manual de datos.
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          width={18}
+          height={18}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.7}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M9 4h6v3H9z" />
+          <path d="M15 5h2a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h2" />
+          <path d="M9 13l4 0" />
+          <path d="M9 16h3" />
+          <path d="M15.5 14.5l2-2 1 1-2 2-1.5.5z" />
+        </svg>
+      );
+    case "historial":
+      // Tabla con filas y lápiz: gestión de registros guardados.
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          width={18}
+          height={18}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.7}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <rect x="3" y="4" width="18" height="16" rx="2" />
+          <path d="M3 9h18" />
+          <path d="M9 9v11" />
+        </svg>
+      );
     case "logistica":
       return (
         <svg
@@ -73,6 +122,82 @@ function SectionIcon({ id }: { id: string }): JSX.Element {
           <circle cx="17.5" cy="17" r="1.6" />
         </svg>
       );
+    case "empleados":
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          width={18}
+          height={18}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.7}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <circle cx="8" cy="8" r="3" />
+          <circle cx="17" cy="9" r="2.4" />
+          <path d="M2.5 20c0-3 2.5-5.5 5.5-5.5s5.5 2.5 5.5 5.5" />
+          <path d="M15 14.8c3 0 6 1.4 6 4.2" />
+        </svg>
+      );
+    case "auditoria":
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          width={18}
+          height={18}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.7}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M6 3h9l4 4v14H6z" />
+          <path d="M14 3v5h5" />
+          <path d="M9 13h7" />
+          <path d="M9 17h5" />
+        </svg>
+      );
+    case "usuarios":
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          width={18}
+          height={18}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.7}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <circle cx="9" cy="8" r="3.2" />
+          <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" />
+          <path d="M17 5v6" />
+          <path d="M14 8h6" />
+        </svg>
+      );
+    case "monitor":
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          width={18}
+          height={18}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.7}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <rect x="3" y="4" width="18" height="12" rx="2" />
+          <path d="M8 20h8" />
+          <path d="M12 16v4" />
+          <path d="M7 12l3-3 2 2 4-4" />
+        </svg>
+      );
     case "estadisticas":
       return (
         <svg
@@ -90,24 +215,6 @@ function SectionIcon({ id }: { id: string }): JSX.Element {
           <path d="M10 20V4" />
           <path d="M16 20v-7" />
           <path d="M22 20V8" />
-        </svg>
-      );
-    case "hospitales":
-      // Cruz médica con pulso (ingresos hospitalarios).
-      return (
-        <svg
-          viewBox="0 0 24 24"
-          width={18}
-          height={18}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={1.7}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M10 3h4v5h5v4h-5v5h-4v-5H5V8h5z" />
-          <path d="M3 20h2l1.5-3 3 5 2-3H21" />
         </svg>
       );
     default:
@@ -133,6 +240,8 @@ function SectionIcon({ id }: { id: string }): JSX.Element {
 
 export interface AdminSidebarProps {
   activeTab: string;
+  /** Secciones visibles; por defecto todas las del panel de administración. */
+  sections?: readonly AdminSection[];
   onSelect: (id: string) => void;
   /** Estado del drawer en pantallas < lg (ignorado en escritorio). */
   open?: boolean;
@@ -150,6 +259,7 @@ export interface AdminSidebarProps {
  */
 export function AdminSidebar({
   activeTab,
+  sections = ADMIN_SECTIONS,
   onSelect,
   open = false,
   onClose,
@@ -210,7 +320,7 @@ export function AdminSidebar({
           aria-label="Secciones del panel"
           className="flex flex-1 flex-col gap-1 overflow-y-auto p-3"
         >
-          {ADMIN_SECTIONS.map((section) => {
+          {sections.map((section) => {
             const active = section.id === activeTab;
             return (
               <button

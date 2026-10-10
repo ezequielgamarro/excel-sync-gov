@@ -49,7 +49,7 @@ describe("BarrasHorizontalesChart", () => {
       "utf8",
     );
     expect(source).toContain('layout="vertical"');
-    expect(source).toContain("width={160}");
+    expect(source).toContain("width={150}");
     expect(source).toContain("interval={0}");
   });
 });

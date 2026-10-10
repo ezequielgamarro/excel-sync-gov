@@ -5,9 +5,15 @@
 
 import { ConnectionStatus } from "./ConnectionStatus";
 import { ComparisonBar } from "./ComparisonBar";
+import { FilterBar } from "./tabs/FilterBar";
+import { BotonImportarExcel } from "./intervenciones/BotonImportarExcel";
+import { BotonExportarExcel } from "./intervenciones/BotonExportarExcel";
+import { BotonImprimirPdf } from "./BotonImprimirPdf";
 import type { ConnectionPhase } from "../state/dashboardReducer";
 import type { AuthSession } from "../auth/session";
 import { formatClock } from "../lib/format";
+import { ROL_ETIQUETA } from "../auth/roles";
+import type { Rol } from "../auth/roles";
 
 export interface HeaderProps {
   now: number;
@@ -22,6 +28,10 @@ export interface HeaderProps {
   onOpenSidebar?: () => void;
   /** Estado del drawer (para `aria-expanded`). */
   sidebarOpen?: boolean;
+  /** Rol del usuario: define qué controles de la cabecera se muestran. */
+  rol?: Rol;
+  /** Muestra «Comparar vs» y los filtros (por defecto, todos menos el empleado). */
+  mostrarFiltros?: boolean;
 }
 
 /** Recorta identificadores largos (p. ej. UUID) para no ensanchar la cabecera. */
@@ -41,8 +51,10 @@ export function Header({
   onLogout,
   onOpenSidebar,
   sidebarOpen = false,
+  rol = "admin",
+  mostrarFiltros = rol !== "empleado",
 }: HeaderProps): JSX.Element {
-  const role = session?.roles[0] ?? session?.capabilities[0] ?? "—";
+  const role = session ? ROL_ETIQUETA[rol] : "—";
   return (
     <header className="flex flex-col gap-3 border-b border-border bg-surface/70 px-4 py-3 backdrop-blur sm:px-6">
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
@@ -72,6 +84,16 @@ export function Header({
                 <path d="M4 18h16" />
               </svg>
             </button>
+          ) : null}
+
+          {rol === "visitante" ? (
+            <img
+              src={`${import.meta.env.BASE_URL}icons/logo-policia-tucuman.png`}
+              alt="Policía de Tucumán"
+              className="h-10 w-10 shrink-0 object-contain"
+              width={40}
+              height={40}
+            />
           ) : null}
 
           <div className="min-w-0">
@@ -108,9 +130,18 @@ export function Header({
       </div>
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <ComparisonBar />
+        {mostrarFiltros ? (
+          <>
+            <ComparisonBar />
+
+            <FilterBar layout="inline" />
+          </>
+        ) : null}
 
         <div className="ml-auto flex items-center gap-3 border-l border-border pl-4">
+          {rol !== "visitante" ? <BotonImportarExcel /> : null}
+          {rol === "admin" ? <BotonExportarExcel /> : null}
+          {rol !== "visitante" ? <BotonImprimirPdf /> : null}
           <div className="flex flex-col items-end leading-tight">
             <span className="text-[11px] uppercase tracking-wide text-muted">Oficial</span>
             <span className="text-xs text-ink2" title={session?.sub || "—"}>

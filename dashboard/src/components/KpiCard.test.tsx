@@ -37,16 +37,16 @@ afterEach(() => {
 
 describe("KpiCard (RF-02, T66)", () => {
   it("formatea variación con glifo, signo y porcentaje es-CL", () => {
-    render(<KpiCard kpiKey="total_consultas_sifcop" kpi={makeKpi()} />);
+    render(<KpiCard kpiKey="total_intervenciones" kpi={makeKpi()} />);
     expect(screen.getAllByText(/184\.732/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/\+3\.120/).length).toBeGreaterThan(0);
-    expect(screen.getByText("vs período anterior")).toBeInTheDocument();
+    expect(screen.getByText(/más que el período anterior/)).toBeInTheDocument();
   });
 
   it("muestra '— sin período anterior' cuando has_reference=false", () => {
     render(
       <KpiCard
-        kpiKey="armas_secuestradas"
+        kpiKey="total_positivos"
         kpi={makeKpi({
           delta_abs: null,
           delta_pct: null,
@@ -59,24 +59,38 @@ describe("KpiCard (RF-02, T66)", () => {
     expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
   });
 
+  it("nunca renderiza 'N/A' cuando no hay baseline", () => {
+    render(
+      <KpiCard
+        kpiKey="total_positivos"
+        kpi={makeKpi({
+          delta_abs: null,
+          delta_pct: null,
+          has_reference: false,
+        })}
+      />,
+    );
+    expect(screen.queryByText(/N\/A/)).not.toBeInTheDocument();
+  });
+
   it("no destella si el valor no cambia (idempotencia visual)", () => {
     const { container, rerender } = render(
-      <KpiCard kpiKey="total_consultas_sifcop" kpi={makeKpi()} />,
+      <KpiCard kpiKey="total_intervenciones" kpi={makeKpi()} />,
     );
-    rerender(<KpiCard kpiKey="total_consultas_sifcop" kpi={makeKpi()} />);
-    const card = container.querySelector('[data-kpi="total_consultas_sifcop"]');
+    rerender(<KpiCard kpiKey="total_intervenciones" kpi={makeKpi()} />);
+    const card = container.querySelector('[data-kpi="total_intervenciones"]');
     expect(card?.className).not.toContain("flash");
   });
 
   it("destella al cambiar el valor y lo anuncia una vez por aria-live", async () => {
     const { container, rerender } = render(
-      <KpiCard kpiKey="total_consultas_sifcop" kpi={makeKpi()} />,
+      <KpiCard kpiKey="total_intervenciones" kpi={makeKpi()} />,
     );
     rerender(
-      <KpiCard kpiKey="total_consultas_sifcop" kpi={makeKpi({ value: 185000, delta_abs: 3388 })} />,
+      <KpiCard kpiKey="total_intervenciones" kpi={makeKpi({ value: 185000, delta_abs: 3388 })} />,
     );
     await waitFor(() => {
-      const card = container.querySelector('[data-kpi="total_consultas_sifcop"]');
+      const card = container.querySelector('[data-kpi="total_intervenciones"]');
       expect(card?.className).toContain("flash");
     });
     expect(container.querySelector('[aria-live="polite"]')).not.toBeNull();

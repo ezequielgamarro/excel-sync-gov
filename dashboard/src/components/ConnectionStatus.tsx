@@ -75,7 +75,9 @@ export function ConnectionStatus({
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
       <span
-        className="flex items-center gap-2 text-sm font-semibold"
+        className={`flex items-center gap-2 text-sm font-semibold ${
+          descriptor.label === "EN VIVO" ? "animate-pulse" : ""
+        }`}
         style={{ color: descriptor.text }}
         role="status"
         aria-live="polite"

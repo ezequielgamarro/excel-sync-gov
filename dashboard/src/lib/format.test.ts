@@ -30,6 +30,8 @@ describe("formato es-CL (RNF-15.a/b)", () => {
     expect(formatVariation(-5, -1.1)?.text).toBe("▼ −5 (−1,1 %)");
     expect(formatVariation(0, 0)?.text).toBe("= 0 (0,0 %)");
     expect(formatVariation(null, null)).toBeNull();
+    // Sin porcentaje (pct `null`) no se inventa ni "N/A": se usa «—».
+    expect(formatVariation(5, null)?.text).toBe("▲ +5 —");
   });
 
   it("formatea la edad de frescura", () => {

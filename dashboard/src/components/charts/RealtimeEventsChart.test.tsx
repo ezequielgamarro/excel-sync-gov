@@ -15,15 +15,15 @@ describe("RealtimeEventsChart — serie real y estados", () => {
   it("renderiza la serie real recibida por props", () => {
     renderChart({
       series: [
-        { ts: "2026-10-06T10:00:00Z", value: 10 },
-        { ts: "2026-10-06T11:00:00Z", value: 14 },
+        { ts: "10:00", value: 10 },
+        { ts: "11:00", value: 14 },
       ],
     });
     expect(screen.getByTestId("chart-realtime")).toBeInTheDocument();
   });
 
-  it("ignora puntos con fecha inválida y muestra vacío si no queda ninguno", () => {
-    renderChart({ series: [{ ts: "no-es-fecha", value: 5 }] });
+  it("ignora puntos sin etiqueta horaria y muestra vacío si no queda ninguno", () => {
+    renderChart({ series: [{ ts: "", value: 5 }] });
     expect(screen.getByRole("status")).toHaveTextContent("SIN DATOS");
   });
 
@@ -32,13 +32,11 @@ describe("RealtimeEventsChart — serie real y estados", () => {
     expect(screen.getByRole("status")).toHaveTextContent("SIN DATOS");
   });
 
-  it("no expone ningún selector de Turno (filtro eliminado)", () => {
-    renderChart({ series: [{ ts: "2026-10-06T10:00:00Z", value: 3 }] });
+  it("no trae filtros propios (los globales viven en la cabecera)", () => {
+    renderChart({ series: [{ ts: "10:00", value: 3 }] });
     expect(screen.queryByLabelText(/turno/i)).toBeNull();
-    expect(document.getElementById("filter-turno")).toBeNull();
-    // Unidad Regional + Rango siguen presentes.
-    expect(document.getElementById("filter-unidad")).not.toBeNull();
-    expect(document.getElementById("filter-rango")).not.toBeNull();
+    expect(screen.queryByLabelText(/unidad regional/i)).toBeNull();
+    expect(screen.queryByLabelText(/rango/i)).toBeNull();
   });
 
   it("muestra carga y error", () => {

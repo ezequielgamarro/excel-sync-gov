@@ -1,6 +1,6 @@
 /**
- * Sección «Estadísticas» (Resumen): series reales de la hoja `DASHBOARD_WEB`
- * servidas por `GET /api/estadisticas`.
+ * Sección «Estadísticas» (Resumen): series reales derivadas del listado
+ * de Supabase (`intervenciones_diarias`).
  *
  * Los KPIs superiores NO se repiten aquí: la fila canónica de 4 tarjetas vive en
  * `DashboardScreen` (conectada a `data.totales`). Esta sección sólo aporta los
@@ -11,19 +11,21 @@
  * - `error`: panel de error con reintento; NUNCA datos de demostración.
  * - `listo`: barras de regionales/dependencias + dona de resultados.
  *
- * Es una sección REACTIVA: no hay botón «Actualizar» manual; el hook
- * `useEstadisticas` refresca por polling cada 60 s.
+ * Es una sección PRESENTACIONAL: recibe por props los datos ya filtrados
+ * (`datos`), la fase, el error y el `refetch` de `useIntervenciones` desde
+ * `DashboardScreen`, de modo que reacciona a los filtros globales (unidad,
+ * rango y período de comparación) sin volver a pedir datos.
  */
 
+import type { IntervencionesDerivadas } from "../../lib/intervenciones";
 import { Skeleton } from "../Skeletons";
-import { useEstadisticas } from "../../hooks/useEstadisticas";
 import { RegionalesBarChart } from "./RegionalesBarChart";
 import { DependenciasBarChart } from "./DependenciasBarChart";
 import { ResultadosDonutChart } from "./ResultadosDonutChart";
 
-const CHART_HEIGHT = 340;
-/** Altura mínima legible de las barras de dependencias (alto dinámico abajo). */
-const DEPENDENCIAS_MIN_HEIGHT = 600;
+const CHART_HEIGHT = 288;
+/** Alto (px) reservado por cada fila del gráfico de regionales. */
+const FILA_REGIONAL = 38;
 
 function LoadingState(): JSX.Element {
   return (
@@ -60,13 +62,18 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
 }
 
 export interface EstadisticasSectionProps {
-  /** Rango/período de comparación (`ayer`|`semana`|`mes`|`anio`) para el refetch. */
-  rango?: string;
+  datos: IntervencionesDerivadas | null;
+  fase: "cargando" | "listo" | "error";
+  error: string | null;
+  refetch: () => void;
 }
 
-export function EstadisticasSection({ rango }: EstadisticasSectionProps): JSX.Element {
-  const { fase, datos, error, refetch } = useEstadisticas(rango);
-
+export function EstadisticasSection({
+  datos,
+  fase,
+  error,
+  refetch,
+}: EstadisticasSectionProps): JSX.Element {
   if (fase === "cargando") {
     return <LoadingState />;
   }
@@ -78,21 +85,22 @@ export function EstadisticasSection({ rango }: EstadisticasSectionProps): JSX.El
   const regionales = datos.grafico_regionales ?? [];
   const dependencias = datos.grafico_dependencias ?? [];
   const alertas = datos.alertas_resultados ?? [];
-  // Alto dinámico del contenedor de dependencias: una franja por etiqueta.
-  const dependenciasHeight = Math.max(dependencias.length * 40, DEPENDENCIAS_MIN_HEIGHT);
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-1 gap-[var(--grid-gutter)] xl:grid-cols-2">
-        <div className="min-w-0" style={{ height: CHART_HEIGHT }}>
-          <RegionalesBarChart data={regionales} />
-        </div>
-        <div className="min-w-0" style={{ height: CHART_HEIGHT }}>
-          <ResultadosDonutChart data={alertas} />
-        </div>
+      {/* Ancho completo; el alto crece con la cantidad de unidades/direcciones. */}
+      <div
+        className="min-w-0"
+        style={{ height: Math.max(CHART_HEIGHT, regionales.length * FILA_REGIONAL + 90) }}
+      >
+        <RegionalesBarChart data={regionales} />
       </div>
 
-      <div className="min-w-0 overflow-y-auto" style={{ height: dependenciasHeight }}>
+      <div className="min-w-0" style={{ height: CHART_HEIGHT }}>
+        <ResultadosDonutChart data={alertas} />
+      </div>
+
+      <div className="min-w-0">
         <DependenciasBarChart data={dependencias} />
       </div>
     </div>

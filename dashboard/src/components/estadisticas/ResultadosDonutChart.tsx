@@ -94,7 +94,10 @@ export function ResultadosDonutChart({
                       outerRadius="82%"
                       paddingAngle={2}
                       stroke="none"
-                      isAnimationActive={false}
+                      isAnimationActive={true}
+                      animationBegin={0}
+                      animationDuration={1200}
+                      animationEasing="ease-out"
                     >
                       {slices.map((slice) => (
                         <Cell key={slice.name} fill={slice.color} />

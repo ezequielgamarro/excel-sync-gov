@@ -16,12 +16,6 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: false,
-    proxy: {
-      // REST del backend (incluye /api/hospitales y /api/v1).
-      "/api": { target: "http://127.0.0.1:8000", changeOrigin: true },
-      // WebSocket del backend (por si se usa el mismo origen).
-      "/ws": { target: "http://127.0.0.1:8000", changeOrigin: true, ws: true },
-    },
   },
   build: {
     target: "es2022",

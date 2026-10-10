@@ -12,8 +12,8 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import type { Kpi, KpiKey } from "../types";
-import { KPI_LABEL } from "../types";
+import type { Kpi, KpiKey, TableroCpiKey } from "../types";
+import { KPI_LABEL, TABLERO_KPI_LABEL } from "../types";
 import { KpiIcon } from "./KpiIcon";
 import {
   formatInteger,
@@ -25,12 +25,16 @@ import {
 import { useAnimatedNumber, usePrefersReducedMotion } from "../hooks/useAnimatedNumber";
 
 export interface KpiCardProps {
-  kpiKey: KpiKey;
+  kpiKey: KpiKey | TableroCpiKey;
   kpi: Kpi;
   /** Atenúa la tarjeta cuando los datos superan el umbral de frescura (RF-05.h). */
   dimmed?: boolean;
   /** Etiqueta del período de comparación (p. ej. "Mes anterior"). */
   periodLabel?: string;
+}
+
+function lowerFirst(value: string): string {
+  return value.charAt(0).toLowerCase() + value.slice(1);
 }
 
 function TrendChip({ variation, pct }: { variation: VariationParts; pct: string }): JSX.Element {
@@ -67,10 +71,25 @@ export function KpiCard({
     return () => window.clearTimeout(id);
   }, [kpi.value, reducedMotion]);
 
-  const label = KPI_LABEL[kpiKey];
+  const label =
+    kpiKey in KPI_LABEL
+      ? KPI_LABEL[kpiKey as KpiKey]
+      : TABLERO_KPI_LABEL[kpiKey as TableroCpiKey];
   const variation = kpi.has_reference ? formatVariation(kpi.delta_abs, kpi.delta_pct) : null;
-  const pct = kpi.delta_pct === null ? "sin base" : formatSignedPercent(kpi.delta_pct);
+  const pct =
+    kpi.delta_pct === null || !Number.isFinite(kpi.delta_pct)
+      ? "—"
+      : formatSignedPercent(kpi.delta_pct);
   const hasPrevious = kpi.has_reference && kpi.delta_abs !== null;
+  const deltaAbs = kpi.delta_abs ?? 0;
+  const periodoMinus = lowerFirst(periodLabel);
+  const diffText =
+    deltaAbs > 0
+      ? `${formatInteger(deltaAbs)} más que el ${periodoMinus}`
+      : deltaAbs < 0
+        ? `${formatInteger(Math.abs(deltaAbs))} menos que el ${periodoMinus}`
+        : `Igual que el ${periodoMinus}`;
+  const diffClass = deltaAbs > 0 ? "text-green-400" : deltaAbs < 0 ? "text-red-400" : "text-muted";
 
   return (
     <article
@@ -106,6 +125,15 @@ export function KpiCard({
         {formatInteger(displayValue)}
       </span>
 
+      {kpiKey === "total_intervenciones" ? (
+        <span
+          className="text-[11px] leading-tight text-muted"
+          title="Suma de personas, vehículos y armas"
+        >
+          (Suma de personas, vehículos y armas)
+        </span>
+      ) : null}
+
       <footer className="flex items-end justify-between gap-2 text-xs">
         {hasPrevious && variation ? (
           <>
@@ -113,12 +141,10 @@ export function KpiCard({
               {periodLabel}{" "}
               <span className="num text-ink2">{formatInteger(kpi.baseline_value)}</span>
             </span>
-            <span className="text-muted">
-              <span className="num text-ink2">{variation.abs}</span> <span>vs {periodLabel}</span>
-            </span>
+            <span className={diffClass}>{diffText}</span>
           </>
         ) : (
-          <span className="text-muted">— sin {periodLabel}</span>
+          <span className="text-muted opacity-60">— sin {periodLabel}</span>
         )}
       </footer>
 

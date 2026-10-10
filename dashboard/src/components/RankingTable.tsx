@@ -14,7 +14,7 @@ import { formatInteger, formatVariation, toneColorVar } from "../lib/format";
 
 export interface RankingTableProps {
   dependencias: RankingItem[];
-  /** Período de comparación global (opcional; por defecto, datos del backend). */
+  /** Período de comparación global (opcional; por defecto, datos de Supabase). */
   period?: ComparisonPeriod;
   /** Secuencia del snapshot para el cálculo determinista (opcional). */
   seq?: number;

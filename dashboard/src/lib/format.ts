@@ -21,6 +21,7 @@ export function formatInteger(value: number): string {
 
 /** `3120` → `"+3.120"`; `-412` → `"−412"` (menos tipográfico); `0` → `"0"`. */
 export function formatSignedInteger(value: number): string {
+  if (!Number.isFinite(value)) return "0";
   if (value === 0) return "0";
   const sign = value > 0 ? "+" : "−";
   return `${sign}${integerFormatter.format(Math.abs(value))}`;
@@ -28,6 +29,7 @@ export function formatSignedInteger(value: number): string {
 
 /** `1.71` → `"+1,7 %"`; `-13.95` → `"−14,0 %"`; `0` → `"0,0 %"`. */
 export function formatSignedPercent(value: number): string {
+  if (!Number.isFinite(value)) return "0,0 %";
   if (value === 0) return "0,0 %";
   const sign = value > 0 ? "+" : "−";
   return `${sign}${oneDecimalFormatter.format(Math.abs(value))} %`;
@@ -57,11 +59,14 @@ export function formatVariation(
   deltaAbs: number | null,
   deltaPct: number | null,
 ): VariationParts | null {
-  if (deltaAbs === null) return null;
+  if (deltaAbs === null || !Number.isFinite(deltaAbs)) return null;
   const tone: VariationTone = deltaAbs > 0 ? "pos" : deltaAbs < 0 ? "neg" : "flat";
   const glyph = tone === "pos" ? "▲" : tone === "neg" ? "▼" : "=";
   const abs = formatSignedInteger(deltaAbs);
-  const pct = deltaPct === null ? "sin base" : `(${formatSignedPercent(deltaPct)})`;
+  const pct =
+    deltaPct === null || !Number.isFinite(deltaPct)
+      ? "—"
+      : `(${formatSignedPercent(deltaPct)})`;
   return { glyph, abs, pct, tone, text: `${glyph} ${abs} ${pct}` };
 }
 

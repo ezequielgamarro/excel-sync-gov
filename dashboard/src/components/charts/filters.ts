@@ -3,14 +3,14 @@
  *
  * Este módulo NO contiene generadores de datos: sólo tipos, valores por defecto
  * y la paleta. Los datos de los gráficos provienen siempre de fuentes reales
- * (`GET /dashboard/consultas`, `GET /api/estadisticas`, snapshot).
+ * (Supabase `intervenciones_diarias` y snapshot).
  */
 
 import type { TurnoId, UnidadId } from "../../types";
 
 export type TurnoFilter = "TODOS" | TurnoId;
 /**
- * Unidad Regional: «TODAS» + nombre oficial dinámico del backend
+ * Unidad Regional: «TODAS» + nombre oficial dinámico de Supabase
  * (`estadisticas.regionales_disponibles`, p. ej. «Unidad Regional Norte»).
  * El catálogo `UnidadId` se conserva como fallback estático.
  */
@@ -26,7 +26,7 @@ export interface ActiveFilters {
 export const DEFAULT_FILTERS: ActiveFilters = {
   turno: "TODOS",
   unidad: "TODAS",
-  rango: "24h",
+  rango: "30d",
 };
 
 /**

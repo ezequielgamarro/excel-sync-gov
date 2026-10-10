@@ -10,7 +10,7 @@ interface FiltersContextValue {
   filters: ActiveFilters;
   setFilters: (filters: ActiveFilters) => void;
   setFilter: (key: keyof ActiveFilters, value: string) => void;
-  /** Unidades Regionales reales devueltas por el backend (selectores). */
+  /** Unidades Regionales reales devueltas por Supabase (selectores). */
   unidadesDisponibles: string[];
   setUnidadesDisponibles: (unidades: string[]) => void;
 }
@@ -26,7 +26,7 @@ export function FiltersProvider({ children }: { children: ReactNode }): JSX.Elem
     setFilters((prev) => ({ ...prev, [key]: value }) as ActiveFilters);
   }, []);
 
-  // Estable por contenido: evita re-renders cuando el backend repite la lista.
+  // Estable por contenido: evita re-renders cuando Supabase repite la lista.
   const setUnidadesDisponibles = useCallback((unidades: string[]) => {
     setUnidadesDisponiblesState((prev) =>
       prev.length === unidades.length && prev.every((unit, index) => unit === unidades[index])

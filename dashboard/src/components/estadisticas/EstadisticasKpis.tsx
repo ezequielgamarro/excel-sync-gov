@@ -1,12 +1,12 @@
 /**
- * Tarjetas KPI de la hoja `DASHBOARD_WEB` / `CONSULTAS`.
+ * Tarjetas KPI derivadas de las intervenciones (Supabase `intervenciones_diarias`).
  *
- * Conecta las tarjetas SUPERIORES a los totales REALES del backend
- * (`data.totales` con fallback a `data.kpis`):
- * - Total Consultas        → `totales.total_consultas` ?? `kpis.total_consultas`.
- * - Aprehendidos           → `totales.aprehendidos` ?? `kpis.aprehendidos`.
- * - Vehículos Secuestrados → `totales.vehiculos_secuestrados` ?? `kpis.vehiculos`.
- * - Armas Secuestradas     → `totales.armas_secuestradas` ?? `kpis.armas`.
+ * Conecta las tarjetas a los totales REALES derivados (`data.totales` con
+ * respaldo a `data.kpis`):
+ * - Total Intervenciones   → `totales.total_intervenciones` ?? `kpis.total_intervenciones`.
+ * - Total Positivos        → `totales.total_positivos` ?? `kpis.total_positivos`.
+ * - Consultas de Personas  → `totales.consultas_personas` ?? `kpis.consultas_personas`.
+ * - Consultas de Vehículos → `totales.consultas_vehiculos` ?? `kpis.consultas_vehiculos`.
  *
  * Lenguaje visual táctico (oscuro): superficie `kpi-card`, borde tenue, número
  * blanco/cyan y un indicador lateral delgado. SIN rellenos planos rojo/verde.
@@ -17,7 +17,7 @@ import type { EstadisticasKpis as EstadisticasKpisData, EstadisticasTotales } fr
 import { formatInteger } from "../../lib/format";
 
 export interface EstadisticasKpisProps {
-  /** Totales reales exactos del workbook (`CONSULTAS`). */
+  /** Totales reales exactos de las intervenciones. */
   totales?: EstadisticasTotales;
   /** KPIs agregados; respaldo cuando `totales` no trae una clave. */
   kpis?: EstadisticasKpisData;
@@ -52,17 +52,29 @@ function KpiCard({ label, value, testKey }: KpiCardProps): JSX.Element {
 }
 
 export function EstadisticasKpis({ totales, kpis }: EstadisticasKpisProps): JSX.Element {
-  const totalConsultas = totales?.total_consultas ?? kpis?.total_consultas ?? 0;
-  const aprehendidos = totales?.aprehendidos ?? kpis?.aprehendidos ?? 0;
-  const vehiculos = totales?.vehiculos_secuestrados ?? kpis?.vehiculos ?? 0;
-  const armas = totales?.armas_secuestradas ?? kpis?.armas ?? 0;
+  const totalIntervenciones = totales?.total_intervenciones ?? kpis?.total_intervenciones ?? 0;
+  const totalPositivos = totales?.total_positivos ?? kpis?.total_positivos ?? 0;
+  const consultasPersonas = totales?.consultas_personas ?? kpis?.consultas_personas ?? 0;
+  const consultasVehiculos = totales?.consultas_vehiculos ?? kpis?.consultas_vehiculos ?? 0;
 
   return (
     <div className="grid grid-cols-1 gap-[var(--grid-gutter)] sm:grid-cols-2 xl:grid-cols-4">
-      <KpiCard label="TOTAL CONSULTAS" value={totalConsultas} testKey="total-consultas" />
-      <KpiCard label="APREHENDIDOS" value={aprehendidos} testKey="aprehendidos" />
-      <KpiCard label="VEHÍCULOS SECUESTRADOS" value={vehiculos} testKey="vehiculos-secuestrados" />
-      <KpiCard label="ARMAS SECUESTRADAS" value={armas} testKey="armas-secuestradas" />
+      <KpiCard
+        label="TOTAL INTERVENCIONES"
+        value={totalIntervenciones}
+        testKey="total-intervenciones"
+      />
+      <KpiCard label="TOTAL POSITIVOS" value={totalPositivos} testKey="total-positivos" />
+      <KpiCard
+        label="CONSULTAS DE PERSONAS"
+        value={consultasPersonas}
+        testKey="consultas-personas"
+      />
+      <KpiCard
+        label="CONSULTAS DE VEHÍCULOS"
+        value={consultasVehiculos}
+        testKey="consultas-vehiculos"
+      />
     </div>
   );
 }

@@ -63,9 +63,9 @@ describe("AdminSidebar responsivo", () => {
 
   it("marca la sección activa con aria-current", () => {
     vi.stubGlobal("matchMedia", matchMediaStub(true));
-    render(<AdminSidebar activeTab="hospitales" onSelect={() => {}} />);
+    render(<AdminSidebar activeTab="comparativas" onSelect={() => {}} />);
 
-    expect(screen.getByRole("button", { name: /ingresos hospitalarios/i })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: /estadística total cisop/i })).toHaveAttribute(
       "aria-current",
       "page",
     );

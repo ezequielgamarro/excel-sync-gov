@@ -2,17 +2,18 @@
  * Barras horizontales de `grafico_regionales` (hoja `DASHBOARD_WEB`).
  *
  * Reutiliza el tratamiento visual de `RegionalChart`: `layout="vertical"`,
- * gradiente cian, retícula tenue y tooltip oscuro. El eje Y es ancho (140 px)
- * para que entren los nombres de las unidades regionales y se descartan las
- * etiquetas vacías.
+ * retícula tenue y tooltip oscuro. El eje Y es ancho (140 px) para que entren
+ * los nombres de las unidades regionales y se descartan las etiquetas vacías.
+ * Cada barra se apila en dos tramos: «Positivos» (verde) y «Total de
+ * Intervenciones» (azul).
  */
 
 import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   LabelList,
+  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -20,16 +21,23 @@ import {
 } from "recharts";
 import type { EstadisticaItem } from "../../types";
 import { formatInteger } from "../../lib/format";
-import { usePrefersReducedMotion } from "../../hooks/useAnimatedNumber";
+import { POSITIVOS_POR_DEFECTO } from "../../lib/intervenciones";
+import { renderPositivosLabel } from "../../lib/rechartsLabels";
+import type { PositivosLabelProps } from "../../lib/rechartsLabels";
 
 export interface RegionalesBarChartProps {
   data: EstadisticaItem[];
   title?: string;
 }
 
+interface BarDatumApilado extends EstadisticaItem {
+  positivos: number;
+  resto: number;
+}
+
 interface TooltipProps {
   active?: boolean;
-  payload?: Array<{ payload: EstadisticaItem }>;
+  payload?: Array<{ payload: BarDatumApilado }>;
 }
 
 function DarkTooltip({ active, payload }: TooltipProps): JSX.Element | null {
@@ -46,16 +54,26 @@ function DarkTooltip({ active, payload }: TooltipProps): JSX.Element | null {
     >
       <p className="font-display text-base font-semibold uppercase tracking-wide">{datum.name}</p>
       <p className="num mt-1">{formatInteger(datum.value)}</p>
+      <p className="num text-xs text-emerald-400">Positivos: {formatInteger(datum.positivos)}</p>
+      <p className="num text-xs text-muted">Resto: {formatInteger(datum.resto)}</p>
     </div>
   );
 }
 
 export function RegionalesBarChart({
   data,
-  title = "Consultas por Unidad Regional",
+  title = "Intervenciones por Unidad Regional",
 }: RegionalesBarChartProps): JSX.Element {
-  const reducedMotion = usePrefersReducedMotion();
-  const series = data.filter((item) => item.name.trim() !== "");
+  const series: BarDatumApilado[] = data
+    .filter((item) => item.name.trim() !== "")
+    .map((item) => {
+      const total = Math.max(0, item.value ?? 0);
+      const positivos = Math.min(
+        total,
+        Math.max(0, item.positivos ?? Math.round(total * POSITIVOS_POR_DEFECTO)),
+      );
+      return { ...item, positivos, resto: Math.max(0, total - positivos) };
+    });
 
   return (
     <section className="panel flex h-full min-h-0 flex-col overflow-hidden">
@@ -77,12 +95,6 @@ export function RegionalesBarChart({
               margin={{ top: 8, right: 56, bottom: 8, left: 8 }}
               accessibilityLayer
             >
-              <defs>
-                <linearGradient id="estadisticasRegionalesGradient" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#1E90FF" />
-                  <stop offset="100%" stopColor="#4CC2FF" />
-                </linearGradient>
-              </defs>
               <CartesianGrid
                 horizontal={false}
                 vertical
@@ -99,31 +111,45 @@ export function RegionalesBarChart({
               <YAxis
                 type="category"
                 dataKey="name"
-                width={140}
+                width={170}
                 stroke="var(--border-strong)"
                 tick={{ fill: "var(--text-secondary)", fontSize: 13 }}
                 tickLine={false}
               />
               <Tooltip content={<DarkTooltip />} cursor={{ fill: "var(--accent-soft)" }} />
+              <Legend verticalAlign="top" height={36} />
               <Bar
-                dataKey="value"
-                fill="url(#estadisticasRegionalesGradient)"
-                radius={[0, 6, 6, 0]}
-                isAnimationActive={!reducedMotion}
-                animationDuration={400}
+                dataKey="positivos"
+                name="Positivos"
+                stackId="a"
+                fill="#22c55e"
+                maxBarSize={28}
+                isAnimationActive={true}
+                animationBegin={0}
+                animationDuration={1200}
                 animationEasing="ease-out"
               >
-                {series.map((item, index) => (
-                  <Cell
-                    key={`${item.name}-${index}`}
-                    fill="url(#estadisticasRegionalesGradient)"
-                    fillOpacity={0.9}
-                  />
-                ))}
+                <LabelList
+                  dataKey="positivos"
+                  content={(props) => renderPositivosLabel(props as PositivosLabelProps)}
+                />
+              </Bar>
+              <Bar
+                dataKey="resto"
+                name="Total de Intervenciones"
+                stackId="a"
+                fill="#3b82f6"
+                radius={[0, 6, 6, 0]}
+                maxBarSize={28}
+                isAnimationActive={true}
+                animationBegin={0}
+                animationDuration={1200}
+                animationEasing="ease-out"
+              >
                 <LabelList
                   dataKey="value"
                   position="right"
-                  formatter={(value: number) => formatInteger(value)}
+                  formatter={(value: number) => value.toLocaleString("es-CL")}
                   style={{ fill: "var(--text-primary)", fontSize: 12 }}
                 />
               </Bar>

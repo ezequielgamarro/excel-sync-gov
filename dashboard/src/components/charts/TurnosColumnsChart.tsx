@@ -2,8 +2,8 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   LabelList,
+  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -12,7 +12,9 @@ import {
 import type { ConsultaGroup } from "../../types";
 import { buildGroupBars } from "../../lib/barData";
 import type { BarDatum } from "../../lib/barData";
-import { usePrefersReducedMotion } from "../../hooks/useAnimatedNumber";
+import { POSITIVOS_POR_DEFECTO } from "../../lib/intervenciones";
+import { renderPositivosLabel, renderTotalLabel, TickInclinado } from "../../lib/rechartsLabels";
+import type { PositivosLabelProps, TotalLabelProps } from "../../lib/rechartsLabels";
 import { Skeleton } from "../Skeletons";
 
 export interface ColumnsChartProps {
@@ -26,9 +28,14 @@ export interface ColumnsChartProps {
   mode?: "unidad" | "turno";
 }
 
+interface BarDatumApilado extends BarDatum {
+  positivos: number;
+  resto: number;
+}
+
 interface TooltipProps {
   active?: boolean;
-  payload?: Array<{ payload: BarDatum }>;
+  payload?: Array<{ payload: BarDatumApilado }>;
 }
 
 function DarkTooltip({ active, payload }: TooltipProps): JSX.Element | null {
@@ -47,6 +54,8 @@ function DarkTooltip({ active, payload }: TooltipProps): JSX.Element | null {
     >
       <p className="font-display text-base font-semibold uppercase tracking-wide">{datum.label}</p>
       <p className="num mt-1">{new Intl.NumberFormat("es-CL").format(datum.value)}</p>
+      <p className="num text-xs text-emerald-400">Positivos: {datum.positivos}</p>
+      <p className="num text-xs text-muted">Resto: {datum.resto}</p>
       <p className="num text-xs text-muted">
         {datum.baseline === null || pct === null
           ? "sin histórico"
@@ -65,11 +74,16 @@ export function TurnosColumnsChart({
   groups,
   loading = false,
   error = null,
-  mode = "unidad",
 }: ColumnsChartProps): JSX.Element {
-  const reducedMotion = usePrefersReducedMotion();
-  const data: BarDatum[] = buildGroupBars(groups ?? []);
-  const gradientId = mode === "unidad" ? "columnsGradientUnidad" : "columnsGradientTurno";
+  const data: BarDatumApilado[] = buildGroupBars(groups ?? []).map((datum) => {
+    const total = Math.max(0, datum.value ?? 0);
+    const item = datum as BarDatum & { positivos?: number };
+    const positivos = Math.min(
+      total,
+      Math.max(0, item.positivos ?? Math.round(total * POSITIVOS_POR_DEFECTO)),
+    );
+    return { ...datum, positivos, resto: Math.max(0, total - positivos) };
+  });
 
   return (
     <section className="panel flex h-full min-h-0 flex-col overflow-hidden">
@@ -99,19 +113,19 @@ export function TurnosColumnsChart({
           data-testid={testId}
         >
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 20, right: 16, bottom: 8, left: 0 }}>
-              <defs>
-                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#4cc2ff" />
-                  <stop offset="100%" stopColor="#1e90ff" />
-                </linearGradient>
-              </defs>
+            <BarChart
+              data={data}
+              barCategoryGap="15%"
+              margin={{ top: 40, right: 16, bottom: 8, left: 0 }}
+            >
               <CartesianGrid stroke="var(--border)" strokeDasharray="2 6" vertical={false} />
               <XAxis
                 dataKey="label"
                 stroke="var(--border-strong)"
-                tick={{ fill: "var(--text-secondary)", fontSize: 12 }}
+                tick={<TickInclinado />}
                 tickLine={false}
+                interval={0}
+                height={78}
               />
               <YAxis
                 stroke="var(--border-strong)"
@@ -120,25 +134,36 @@ export function TurnosColumnsChart({
                 width={64}
               />
               <Tooltip content={<DarkTooltip />} cursor={{ fill: "var(--accent-soft)" }} />
+              <Legend verticalAlign="top" height={36} />
               <Bar
-                dataKey="value"
-                fill={`url(#${gradientId})`}
-                radius={[6, 6, 0, 0]}
-                isAnimationActive={!reducedMotion}
-                animationDuration={400}
+                dataKey="positivos"
+                name="Positivos"
+                stackId="a"
+                fill="#22c55e"
+                isAnimationActive={true}
+                animationBegin={0}
+                animationDuration={1200}
+                animationEasing="ease-out"
               >
-                {data.map((datum) => (
-                  <Cell
-                    key={datum.id}
-                    fill={datum.highlight ? "#4cc2ff" : `url(#${gradientId})`}
-                    fillOpacity={datum.highlight ? 1 : 0.9}
-                  />
-                ))}
+                <LabelList
+                  dataKey="positivos"
+                  content={(props) => renderPositivosLabel(props as PositivosLabelProps)}
+                />
+              </Bar>
+              <Bar
+                dataKey="resto"
+                name="Total de Intervenciones"
+                stackId="a"
+                fill="#3b82f6"
+                radius={[6, 6, 0, 0]}
+                isAnimationActive={true}
+                animationBegin={0}
+                animationDuration={1200}
+                animationEasing="ease-out"
+              >
                 <LabelList
                   dataKey="value"
-                  position="top"
-                  formatter={(value: number) => new Intl.NumberFormat("es-CL").format(value)}
-                  style={{ fill: "var(--text-primary)", fontSize: 12 }}
+                  content={(props) => renderTotalLabel(props as TotalLabelProps)}
                 />
               </Bar>
             </BarChart>

@@ -127,8 +127,8 @@ describe("orden del ranking (RF-04.e)", () => {
     expect(ranked.map((item) => item.puesto)).toEqual([1, 2, 3]);
   });
 
-  it("limita a 5 filas", () => {
-    const items: RankingItem[] = Array.from({ length: 7 }).map((_, index) => ({
+  it("limita a 10 filas", () => {
+    const items: RankingItem[] = Array.from({ length: 12 }).map((_, index) => ({
       puesto: index + 1,
       dependencia_id: `d-${index}`,
       comisaria: `Comisaría ${index}`,
@@ -137,7 +137,7 @@ describe("orden del ranking (RF-04.e)", () => {
       variacion_pct: 0,
       puesto_previo: 0,
     }));
-    expect(normalizeRanking(items)).toHaveLength(5);
+    expect(normalizeRanking(items)).toHaveLength(10);
   });
 
   it("acepta un KPI sin referencia (has_reference=false)", () => {

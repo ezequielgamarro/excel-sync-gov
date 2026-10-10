@@ -1,6 +1,6 @@
 /**
  * FilterBar — filtros globales: SIN selector de Turno y Unidad Regional
- * DINÁMICA (nombres oficiales del backend) con fallback estático.
+ * DINÁMICA (nombres oficiales de Supabase) con fallback estático.
  */
 
 import { useEffect } from "react";
@@ -32,9 +32,9 @@ describe("FilterBar — sin Turno y Unidad Regional dinámica", () => {
     expect(document.getElementById("filter-turno")).toBeNull();
   });
 
-  it("puebla Unidad Regional con los nombres reales del backend + «Todas»", () => {
+  it("puebla Unidad Regional con los nombres reales de Supabase + «Todas»", () => {
     renderBar(["Unidad Regional Norte", "Unidad Regional Sur"]);
-    const select = document.getElementById("filter-unidad") as HTMLSelectElement;
+    const select = screen.getByLabelText(/unidad regional/i) as HTMLSelectElement;
     const options = within(select)
       .getAllByRole("option")
       .map((option) => (option as HTMLOptionElement).value);
@@ -43,7 +43,7 @@ describe("FilterBar — sin Turno y Unidad Regional dinámica", () => {
 
   it("usa el fallback estático sólo si la lista dinámica viene vacía", () => {
     renderBar([]);
-    const select = document.getElementById("filter-unidad") as HTMLSelectElement;
+    const select = screen.getByLabelText(/unidad regional/i) as HTMLSelectElement;
     const options = within(select)
       .getAllByRole("option")
       .map((option) => (option as HTMLOptionElement).value);

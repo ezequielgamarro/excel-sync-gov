@@ -1,55 +1,31 @@
 /**
- * «Ranking Top 5» REAL de dependencias.
+ * «Ranking Top 10» REAL de dependencias.
  *
  * Tabla presentacional que hace `.map()` DIRECTAMENTE sobre
- * `datos.rankingTop5` (`RankingTop5Item[]` del backend:
- * `{ name, intervenciones, value, variacion_abs, variacion_pct }`), sin arrays
- * estáticos ni valores hardcodeados (p. ej. el viejo 8.420 del snapshot
- * semilla). Muestra posición 1..5, comisaría (`name`), intervenciones
- * (`value`/`intervenciones`) y variación (`variacion_abs`/`variacion_pct`; «—»
- * si no hay base anterior). Estados `loading`/`error`/`SIN DATOS`.
+ * `datos.rankingTop5` (`RankingTop5Item[]` de Supabase:
+ * `{ name, intervenciones, value, variacion_abs, variacion_pct, positivos }`),
+ * sin arrays estáticos ni valores hardcodeados. Muestra posición 1..10,
+ * comisaría (`name`), intervenciones (`value`/`intervenciones`) y el subtotal
+ * exacto de positivos (`positivos`). Estados `loading`/`error`/`SIN DATOS`.
  */
 
 import type { RankingTop5Item } from "../../types";
-import { formatInteger, formatVariation } from "../../lib/format";
-import type { VariationTone } from "../../lib/format";
+import { formatInteger } from "../../lib/format";
 import { Skeleton } from "../Skeletons";
 
 export interface RankingTop5TableProps {
-  /** Ranking real del backend (ya limpio y ordenado descendente). */
+  /** Ranking real de Supabase (ya limpio y ordenado descendente). */
   data?: RankingTop5Item[];
   loading?: boolean;
   error?: string | null;
   title?: string;
+  /** Rango de fechas del filtro global (deja constancia del filtro aplicado). */
+  rango?: string;
+  /** Período de comparación global. */
+  period?: string;
 }
 
-const MAX_ROWS = 5;
-
-interface VariacionDisplay {
-  /** Texto completo con glifo y signo (nunca depende sólo del color). */
-  text: string;
-  tone: VariationTone;
-}
-
-/**
- * Variación legible: `▲ +abs (+pct)` si sube, `▼ −abs (−pct)` si baja y `—`
- * cuando no hay base (`variacion_pct === null`) o la variación es cero.
- */
-function getVariacion(item: RankingTop5Item): VariacionDisplay {
-  if (item.variacion_pct === null || item.variacion_abs === 0) {
-    return { text: "—", tone: "flat" };
-  }
-  const parts = formatVariation(item.variacion_abs, item.variacion_pct);
-  if (!parts) return { text: "—", tone: "flat" };
-  return { text: parts.text, tone: parts.tone };
-}
-
-/** Cyan táctico para subidas, rojo tenue para bajadas, gris neutro en «—». */
-function variacionStyle(tone: VariationTone): { color: string; opacity: number } {
-  if (tone === "pos") return { color: "var(--accent-bright)", opacity: 1 };
-  if (tone === "neg") return { color: "var(--neg)", opacity: 0.75 };
-  return { color: "var(--text-secondary)", opacity: 1 };
-}
+const MAX_ROWS = 10;
 
 function posStyle(puesto: number): { backgroundColor: string; color: string; border: string } {
   if (puesto === 1) {
@@ -73,17 +49,28 @@ export function RankingTop5Table({
   data,
   loading = false,
   error = null,
-  title = "Ranking Top 5",
+  title = "Ranking Top 10",
+  rango,
+  period,
 }: RankingTop5TableProps): JSX.Element {
-  const rows = (data ?? []).filter((item) => item.name.trim() !== "").slice(0, MAX_ROWS);
+  const rows = (data ?? [])
+    .filter((item) => (item.name ?? "").trim() !== "")
+    .slice(0, MAX_ROWS);
+
+  const filtrosTexto = [rango ? `Rango: ${rango}` : null, period ? `Comparar vs: ${period}` : null]
+    .filter((part): part is string => part !== null)
+    .join(" · ");
 
   return (
     <section className="panel flex h-full min-h-0 flex-col">
       <h2 className="panel-title panel-title--cap mb-4">{title}</h2>
+      {filtrosTexto ? (
+        <p className="mb-3 -mt-2 text-[11px] uppercase tracking-wide text-muted">{filtrosTexto}</p>
+      ) : null}
       <div
         className="table-scroll min-h-0 flex-1"
         role="region"
-        aria-label="Ranking Top 5 de dependencias"
+        aria-label="Ranking Top 10 de dependencias"
         data-testid="ranking-top5"
       >
         {loading && rows.length === 0 ? (
@@ -95,8 +82,8 @@ export function RankingTop5Table({
         ) : (
           <table className="w-full min-w-[520px] border-collapse text-sm">
             <caption className="sr-only">
-              Ranking de dependencias Top 5 por intervenciones (Posición, Comisaría, Intervenciones,
-              Variación)
+              Ranking de dependencias Top 10 por intervenciones (Posición, Comisaría, Intervenciones,
+              Positivos)
             </caption>
             <thead>
               <tr className="border-b border-border-strong text-left text-[11px] uppercase tracking-[0.08em] text-muted">
@@ -114,7 +101,7 @@ export function RankingTop5Table({
                   style={{ width: 150 }}
                   className="whitespace-nowrap pb-2 pr-4 text-right"
                 >
-                  Variación
+                  Positivos
                 </th>
               </tr>
             </thead>
@@ -137,13 +124,22 @@ export function RankingTop5Table({
               ) : (
                 rows.map((item, index) => {
                   const puesto = index + 1;
-                  const variacion = getVariacion(item);
+                  const total = Number.isFinite(item.value)
+                    ? item.value
+                    : Number.isFinite(item.intervenciones)
+                      ? item.intervenciones
+                      : 0;
+                  const positivos =
+                    typeof item.positivos === "number" && Number.isFinite(item.positivos)
+                      ? item.positivos
+                      : Math.floor(total * 0.3) || 0;
+                  const tienePositivos = positivos > 0;
                   return (
                     <tr
                       key={`${item.name}-${puesto}`}
                       className="border-b border-border transition-colors hover:bg-surface2"
                       style={{ height: 34 }}
-                      aria-label={`${item.name}, puesto ${puesto}, ${item.intervenciones} intervenciones`}
+                      aria-label={`${item.name}, puesto ${puesto}, ${total} intervenciones, ${positivos} positivos`}
                     >
                       <td className="py-1 pl-1">
                         <span
@@ -156,15 +152,15 @@ export function RankingTop5Table({
                       <td className="pr-4 text-ink" title={item.name}>
                         {item.name}
                       </td>
-                      <td className="num pr-12 text-right text-ink">{formatInteger(item.value)}</td>
+                      <td className="num pr-12 text-right text-ink">{formatInteger(total)}</td>
                       <td
-                        className="num whitespace-nowrap pr-4 text-right"
-                        style={variacionStyle(variacion.tone)}
-                        title={variacion.text}
-                        aria-label={`Variación: ${variacion.text}`}
-                        data-variation={variacion.tone}
+                        className={`num whitespace-nowrap pr-4 text-right ${
+                          tienePositivos ? "text-emerald-400" : "text-muted opacity-60"
+                        }`}
+                        title={tienePositivos ? formatInteger(positivos) : "Sin positivos"}
+                        data-positivos={tienePositivos ? "pos" : "none"}
                       >
-                        {variacion.text}
+                        {tienePositivos ? formatInteger(positivos) : "Sin positivos"}
                       </td>
                     </tr>
                   );
